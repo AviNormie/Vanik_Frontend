@@ -1,21 +1,28 @@
-import { ScrollView, View, SafeAreaView } from "react-native";
-import HeroSection from "@/components/home/HeroSection";
-import FeaturesSection from "@/components/home/FeaturesSection";
-import HowItWorks from "@/components/home/HowItWorks";
-import LanguageSelector from "@/components/home/LanguageSelector";
-import BottomTabs from "@/components/shared/BottomTabs";
+// app/index.tsx
+import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Redirect } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
-export default function Index() {
-  return (
-    <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <HeroSection />
-        <LanguageSelector />
-        <FeaturesSection />
-        <HowItWorks />
-        <View className="h-20" /> {/* Bottom padding for content */}
-      </ScrollView>
-      <BottomTabs />
-    </SafeAreaView>
-  );
+export default function IndexPage() {
+  const { user, farmerProfile, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0fdf4' }}>
+        <ActivityIndicator size="large" color="#16a34a" />
+      </View>
+    );
+  }
+
+  // Redirect based on auth state
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  if (!farmerProfile?.name) {
+    return <Redirect href="/(auth)/complete-profile" />;
+  }
+
+  return <Redirect href="/(tabs)" />;
 }

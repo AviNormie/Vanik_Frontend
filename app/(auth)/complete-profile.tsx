@@ -17,7 +17,7 @@ export default function CompleteProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { setFarmerProfile } = useAuth();
-  const BACKEND_URL = 'https://auth-service-sih.onrender.com'; // Replace with your actual IP
+  const BACKEND_URL = process.env.BACKEND_URL; // Replace with your actual IP
 
   const completeProfile = async () => {
     if (!name.trim()) {

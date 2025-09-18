@@ -17,7 +17,7 @@ export default function CompleteProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { user, logout } = useAuth();
-  const AUTH_BACKEND_URL = process.env.AUTH_BACKEND_URL; // Replace with your actual IP
+  const AUTH_BACKEND_URL = 'http://localhost:3000'; // Local development server
 
   const completeProfile = async () => {
     if (!name.trim()) {
@@ -46,9 +46,9 @@ export default function CompleteProfileScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          token,
           name,
           village: village || undefined,
           district: district || undefined,

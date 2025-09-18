@@ -1,45 +1,25 @@
-// app/(auth)/login.tsx
-import React, { useState, useRef } from 'react';
+// app/(auth)/login.tsx - OTP BACKEND VERSION
+import React, { useState } from 'react';
 import { View, Text, Alert, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../../config/firebase';
-import app from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 
+const BASE_URL = 'https://auth-service-sih.onrender.com';
+
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [verificationId, setVerificationId] = useState('');
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { verifyWithBackend } = useAuth();
-  const recaptchaVerifier = useRef<any>(null);
-  const firebaseConfig = app ? app.options : undefined;
+  const { login } = useAuth();
 
   const sendOTP = async () => {
     if (!phoneNumber || phoneNumber.length !== 10) {
       Alert.alert('Error', 'Please enter a valid 10-digit phone number');
-      return;
-    }
-
-    // Check if it's a test number
-    const testNumbers = ['9999999999', '9876543210', '1234567890'];
-    const isTestNumber = testNumbers.includes(phoneNumber);
-
-    if (isTestNumber) {
-      setIsCodeSent(true);
-      Alert.alert('Test Mode', '📱 Test number detected! Use OTP: 123456');
-      return;
-    }
-
-    if (!recaptchaVerifier.current) {
-      Alert.alert('Error', 'reCAPTCHA not ready. Please wait and try again.');
       return;
     }
 
@@ -49,16 +29,28 @@ export default function LoginScreen() {
       const formattedPhone = `+91${phoneNumber}`;
       console.log('📱 Sending OTP to:', formattedPhone);
       
-      const phoneProvider = new PhoneAuthProvider(auth);
-      const verificationId = await phoneProvider.verifyPhoneNumber(
-        formattedPhone,
-        recaptchaVerifier.current
-      );
+      const response = await fetch(`${BASE_URL}/auth/send-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+        }),
+      });
+
+      console.log('Response status:', response.status);
       
-      console.log('✅ Verification ID received:', verificationId);
-      setVerificationId(verificationId);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to send OTP: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ OTP sent successfully:', result);
+      
       setIsCodeSent(true);
-      Alert.alert('Success', '📱 OTP sent to your phone!');
+      Alert.alert('Success', '📱 OTP sent! Check your backend logs or use test OTP: 123456 for testing.');
       
     } catch (error: any) {
       console.error('❌ Send OTP Error:', error);
@@ -77,85 +69,71 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      console.log('🔍 Verifying OTP:', verificationCode);
+      const formattedPhone = `+91${phoneNumber}`;
+      console.log('🔍 Verifying OTP with backend...', BASE_URL);
       
-      // Handle test numbers
-      const testNumbers = ['9999999999', '9876543210', '1234567890'];
-      const isTestNumber = testNumbers.includes(phoneNumber);
-      
-      if (isTestNumber) {
-        if (verificationCode !== '123456') {
-          Alert.alert('Error', 'Invalid test OTP. Use: 123456');
-          setIsLoading(false);
-          return;
-        }
-        
-        // For test numbers, create a mock Firebase user experience
-        console.log('✅ Test OTP verified');
-        Alert.alert('Success', '🎉 Test login successful!');
-        
-        // Simulate backend verification for test
-        try {
-          // You can either skip backend for test or call with mock data
-          // For now, let's navigate directly for test numbers
-          router.replace('/(auth)/complete-profile');
-        } catch (error) {
-          console.log('Test mode - skipping backend, navigating to profile completion');
-          router.replace('/(auth)/complete-profile');
-        }
-        
-        setIsLoading(false);
-        return;
+      const response = await fetch(`${BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          otp: verificationCode,
+          name: null, // Will be set in profile completion
+          languagePref: 'hi-IN',
+          location: null,
+        }),
+      });
+
+      console.log('Backend response status:', response.status);
+      console.log('Backend response URL:', response.url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error response:', errorText);
+        throw new Error(`Backend responded with ${response.status}: ${errorText}`);
       }
 
-      // Real Firebase verification
-      const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-      const result = await signInWithCredential(auth, credential);
-      
-      console.log('✅ Firebase Auth Success:', result.user.uid);
-      
-      // Get Firebase ID token
-      const idToken = await result.user.getIdToken();
-      console.log('🎫 Got Firebase ID token');
-      
-      // Verify with your backend
-      try {
-        const backendResult = await verifyWithBackend(idToken);
+      const result = await response.json();
+      console.log('✅ Backend verification success:', result);
+
+      if (result.success) {
+        // Store user data in auth context
+        await login(result.user, result.session.token);
         
-        console.log('✅ Backend verification successful');
         Alert.alert('Success', '🎉 Login successful!');
         
         // Navigate based on profile completion
-        if (!backendResult.user.hasProfile) {
+        if (result.user.isNewUser || !result.user.name) {
           console.log('👤 Profile incomplete, navigating to complete-profile');
           router.replace('/(auth)/complete-profile');
         } else {
           console.log('✅ Profile complete, navigating to dashboard');
           router.replace('/(tabs)');
         }
-        
-      } catch (backendError) {
-        console.error('❌ Backend verification failed:', backendError);
-        Alert.alert(
-          'Backend Error', 
-          `Authentication succeeded, but backend verification failed: ${backendError.message}\n\nYou can still continue to complete your profile.`,
-          [
-            { text: 'Continue', onPress: () => router.replace('/(auth)/complete-profile') }
-          ]
-        );
+      } else {
+        throw new Error(result.message || 'Verification failed');
       }
       
     } catch (error: any) {
-      console.error('❌ Verify OTP Error:', error);
-      
-      let errorMessage = error.message;
-      if (error.code === 'auth/invalid-verification-code') {
-        errorMessage = 'Invalid OTP code';
-      } else if (error.code === 'auth/code-expired') {
-        errorMessage = 'OTP expired. Please request a new one';
-      }
-      
-      Alert.alert('Error', `OTP verification failed: ${errorMessage}`);
+      console.error('❌ Backend verification error:', error);
+      Alert.alert(
+        'Verification Failed', 
+        `${error.message}\n\nPlease check the OTP and try again.`,
+        [
+          { 
+            text: 'Try Again', 
+            onPress: () => {
+              setVerificationCode('');
+            }
+          },
+          {
+            text: 'Get New OTP',
+            onPress: resetToPhoneInput
+          }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -164,17 +142,10 @@ export default function LoginScreen() {
   const resetToPhoneInput = () => {
     setIsCodeSent(false);
     setVerificationCode('');
-    setVerificationId('');
   };
 
   return (
     <ScrollView style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification={true}
-      />
-
       <View style={styles.content}>
         <Text style={styles.icon}>🌾</Text>
         <Text style={styles.title}>किसान लॉगिन</Text>
@@ -194,7 +165,7 @@ export default function LoginScreen() {
               />
               
               <Text style={styles.testNote}>
-                💡 For testing, use: 9999999999
+                💡 For testing: Any 10-digit number works. Check backend logs for OTP.
               </Text>
               
               <Button
@@ -209,14 +180,14 @@ export default function LoginScreen() {
                 OTP sent to: +91{phoneNumber}
               </Text>
               <Text style={styles.testNote}>
-                💡 Test OTP: 123456
+                💡 Check your deployed backend logs at: https://dashboard.render.com
               </Text>
               
               <Input
                 label="OTP कोड दर्ज करें (Enter OTP Code)"
                 value={verificationCode}
                 onChangeText={setVerificationCode}
-                placeholder="123456"
+                placeholder="Enter 6-digit OTP"
                 keyboardType="numeric"
                 maxLength={6}
                 autoFocus
@@ -238,6 +209,10 @@ export default function LoginScreen() {
             </View>
           )}
         </Card>
+
+        <Text style={styles.debugInfo}>
+          Backend: {BASE_URL}
+        </Text>
       </View>
     </ScrollView>
   );
@@ -288,5 +263,11 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     marginTop: 12,
+  },
+  debugInfo: {
+    textAlign: 'center',
+    fontSize: 10,
+    color: '#9ca3af',
+    marginTop: 16,
   },
 });

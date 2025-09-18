@@ -1,146 +1,85 @@
-// context/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '../config/firebase';
+// context/AuthContext.tsx - SIMPLIFIED VERSION
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface FarmerProfile {
-  firebaseUid: string;
+interface User {
+  id: string;
   phoneNumber: string;
   name?: string;
-  village?: string;
-  district?: string;
-  state?: string;
-  cropTypes?: string[];
-  farmSize?: number;
-  language?: string;
-}
-
-interface AuthUser {
-  uid: string;
-  phone: string;
-  verified: boolean;
-  hasProfile: boolean;
+  role: string;
+  isNewUser: boolean;
 }
 
 interface AuthContextType {
-  user: AuthUser | null;
-  farmerProfile: FarmerProfile | null;
-  isLoading: boolean;
-  setFarmerProfile: (profile: FarmerProfile | null) => void;
+  user: User | null;
+  token: string | null;
+  login: (user: User, token: string) => Promise<void>;
   logout: () => Promise<void>;
-  verifyWithBackend: (idToken: string) => Promise<any>;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  farmerProfile: null,
-  isLoading: true,
-  setFarmerProfile: () => {},
-  logout: async () => {},
-  verifyWithBackend: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => useContext(AuthContext);
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [farmerProfile, setFarmerProfile] = useState<FarmerProfile | null>(null);
 
-  // Replace with your actual backend URL
-  const AUTH_BACKEND_URL = 'https://auth-service-sih.onrender.com'; // Update this!
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
 
-  // Function to verify with backend
-  const verifyWithBackend = async (idToken: string) => {
+  const loadStoredAuth = async () => {
     try {
-      console.log('🔍 Verifying with backend...', AUTH_BACKEND_URL);
-      const response = await fetch(`${AUTH_BACKEND_URL}/auth/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Backend responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Backend response:', data);
-
-      if (data.success) {
-        setUser({
-          uid: data.user.uid,
-          phone: data.user.phone,
-          verified: true,
-          hasProfile: data.user.hasProfile
-        });
-
-        setFarmerProfile(data.farmer);
-        await AsyncStorage.setItem('firebase_token', idToken);
-        
-        return data;
-      } else {
-        throw new Error(data.message || 'Backend verification failed');
+      const storedUser = await AsyncStorage.getItem('user');
+      const storedToken = await AsyncStorage.getItem('token');
+      
+      if (storedUser && storedToken) {
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken);
       }
     } catch (error) {
-      console.error('❌ Backend verification error:', error);
+      console.error('Failed to load stored auth:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (userData: User, authToken: string) => {
+    try {
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await AsyncStorage.setItem('token', authToken);
+      
+      setUser(userData);
+      setToken(authToken);
+      
+      console.log('✅ User logged in and stored:', userData.phoneNumber);
+    } catch (error) {
+      console.error('Failed to store auth data:', error);
       throw error;
     }
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
-      console.log('🔥 Firebase auth state changed:', !!firebaseUser);
-      
-      if (firebaseUser) {
-        try {
-          const idToken = await firebaseUser.getIdToken();
-          console.log('🎫 Got Firebase ID token');
-          
-          // This will be called automatically when Firebase auth changes
-          // But we'll also call it manually from the login screen for immediate feedback
-          
-        } catch (error) {
-          console.error('❌ Auto-verification error:', error);
-          setUser(null);
-          setFarmerProfile(null);
-        }
-      } else {
-        setUser(null);
-        setFarmerProfile(null);
-        await AsyncStorage.removeItem('firebase_token');
-      }
-      setIsLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
   const logout = async () => {
     try {
-      await auth.signOut();
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('token');
+      
       setUser(null);
-      setFarmerProfile(null);
-      await AsyncStorage.removeItem('firebase_token');
+      setToken(null);
+      
+      console.log('✅ User logged out');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Failed to clear auth data:', error);
     }
   };
 
   const value: AuthContextType = {
     user,
-    farmerProfile,
-    isLoading,
-    setFarmerProfile,
+    token,
+    login,
     logout,
-    verifyWithBackend
+    isLoading,
   };
 
   return (
@@ -148,4 +87,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

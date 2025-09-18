@@ -16,7 +16,7 @@ export default function CompleteProfileScreen() {
   const [farmSize, setFarmSize] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { setFarmerProfile } = useAuth();
+  const { user, logout } = useAuth();
   const AUTH_BACKEND_URL = process.env.AUTH_BACKEND_URL; // Replace with your actual IP
 
   const completeProfile = async () => {
@@ -28,7 +28,14 @@ export default function CompleteProfileScreen() {
     setIsLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem('firebase_token');
+      const token = await AsyncStorage.getItem('token');
+      
+      console.log('🎫 CompleteProfile: Retrieved token:', !!token);
+      console.log('👤 CompleteProfile: Current user:', {
+        id: user?.id,
+        phoneNumber: user?.phoneNumber,
+        name: user?.name
+      });
       
       if (!token) {
         Alert.alert('Error', 'Authentication token not found');
@@ -55,7 +62,15 @@ export default function CompleteProfileScreen() {
       const data = await response.json();
       
       if (data.success) {
-        setFarmerProfile(data.farmer);
+        console.log('✅ CompleteProfile: Profile completed successfully:', data.farmer);
+        
+        // Update user data in storage with the new profile info
+        if (user) {
+          const updatedUser = { ...user, name: data.farmer.name };
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('💾 CompleteProfile: Updated user data in storage');
+        }
+        
         Alert.alert(
           'Success', 
           'प्रोफाइल पूरी हो गई! (Profile completed successfully!) 🎉',
@@ -121,6 +136,19 @@ export default function CompleteProfileScreen() {
             onPress={completeProfile}
             loading={isLoading}
           />
+          
+          <View style={{ marginTop: 16 }}>
+            <Button
+              title="🧹 Clear Storage & Logout (Debug)"
+              onPress={async () => {
+                console.log('🧹 Debug: Clearing storage and logging out');
+                await AsyncStorage.clear();
+                logout();
+                router.replace('/(auth)/login');
+              }}
+              variant="danger"
+            />
+          </View>
         </Card>
       </View>
     </ScrollView>

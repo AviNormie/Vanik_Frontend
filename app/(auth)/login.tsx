@@ -11,7 +11,9 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 
-const BASE_URL = 'http://localhost:3000'; // Local development server
+const BASE_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com'; // Use env variable or fallback
+console.log('🔧 Login: BASE_URL configured as:', BASE_URL);
+console.log('🔧 Login: EXPO_PUBLIC_AUTH_BACKEND_URL env var:', process.env.EXPO_PUBLIC_AUTH_BACKEND_URL);
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -83,6 +85,27 @@ export default function LoginScreen() {
       
       // Verify with your backend using Firebase token
       try {
+        // Test backend connectivity first
+        console.log('🔍 Login: Testing backend connectivity...');
+        try {
+          const healthResponse = await fetch(`${BASE_URL}/auth/health`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log('✅ Login: Backend health check status:', healthResponse.status);
+        } catch (healthError) {
+          console.error('❌ Login: Backend health check failed:', healthError);
+        }
+
+        console.log('🌐 Login: Making backend request to:', `${BASE_URL}/auth/verify-firebase`);
+        console.log('📤 Login: Request payload:', {
+          idToken: idToken ? `${idToken.substring(0, 20)}...` : 'null',
+          phoneNumber: result.user.phoneNumber,
+          uid: result.user.uid,
+        });
+        
         const response = await fetch(`${BASE_URL}/auth/verify-firebase`, {
           method: 'POST',
           headers: {
@@ -95,8 +118,12 @@ export default function LoginScreen() {
           }),
         });
 
+        console.log('📥 Login: Backend response status:', response.status);
+        console.log('📥 Login: Backend response headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
           const errorText = await response.text();
+          console.error('❌ Login: Backend error response:', errorText);
           throw new Error(`Backend responded with ${response.status}: ${errorText}`);
         }
 

@@ -13,6 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  profile: User | null; // Add profile alias for compatibility
   login: (user: User, token: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -31,17 +32,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadStoredAuth = async () => {
     try {
+      console.log('🔍 AuthContext: Loading stored authentication data...');
       const storedUser = await AsyncStorage.getItem('user');
       const storedToken = await AsyncStorage.getItem('token');
       
+      console.log('📱 AuthContext: Stored user exists:', !!storedUser);
+      console.log('🎫 AuthContext: Stored token exists:', !!storedToken);
+      
       if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        console.log('👤 AuthContext: Parsed user data:', {
+          id: parsedUser.id,
+          phoneNumber: parsedUser.phoneNumber,
+          name: parsedUser.name,
+          isNewUser: parsedUser.isNewUser
+        });
+        setUser(parsedUser);
         setToken(storedToken);
+        console.log('✅ AuthContext: User and token restored from storage');
+      } else {
+        console.log('❌ AuthContext: No stored authentication found');
       }
     } catch (error) {
-      console.error('Failed to load stored auth:', error);
+      console.error('❌ AuthContext: Failed to load stored auth:', error);
     } finally {
       setIsLoading(false);
+      console.log('🏁 AuthContext: Loading complete, isLoading set to false');
     }
   };
 
@@ -62,21 +78,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      console.log('🚪 AuthContext: Logging out user...');
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('token');
       
       setUser(null);
       setToken(null);
       
-      console.log('✅ User logged out');
+      console.log('✅ AuthContext: User logged out and storage cleared');
     } catch (error) {
-      console.error('Failed to clear auth data:', error);
+      console.error('❌ AuthContext: Failed to clear auth data:', error);
+    }
+  };
+
+  // Add a function to clear storage for debugging
+  const clearStorage = async () => {
+    try {
+      console.log('🧹 AuthContext: Clearing all storage for debugging...');
+      await AsyncStorage.clear();
+      setUser(null);
+      setToken(null);
+      console.log('✅ AuthContext: All storage cleared');
+    } catch (error) {
+      console.error('❌ AuthContext: Failed to clear storage:', error);
     }
   };
 
   const value: AuthContextType = {
     user,
     token,
+    profile: user, // Add profile alias pointing to user
     login,
     logout,
     isLoading,

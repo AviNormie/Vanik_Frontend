@@ -11,7 +11,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 
-const BASE_URL = 'https://auth-service-sih.onrender.com';
+const BASE_URL = 'http://localhost:3000'; // Local development server
 
 export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');

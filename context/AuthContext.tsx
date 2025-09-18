@@ -53,14 +53,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [farmerProfile, setFarmerProfile] = useState<FarmerProfile | null>(null);
 
   // Replace with your actual backend URL
-  const BACKEND_URL = 'https://auth-service-sih.onrender.com'; // Update this!
+  const AUTH_BACKEND_URL = 'https://auth-service-sih.onrender.com'; // Update this!
 
   // Function to verify with backend
   const verifyWithBackend = async (idToken: string) => {
     try {
-      console.log('🔍 Verifying with backend...', BACKEND_URL);
-      
-      const response = await fetch(`${BACKEND_URL}/auth/verify`, {
+      console.log('🔍 Verifying with backend...', AUTH_BACKEND_URL);
+      const response = await fetch(`${AUTH_BACKEND_URL}/auth/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

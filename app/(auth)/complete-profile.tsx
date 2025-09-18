@@ -17,7 +17,7 @@ export default function CompleteProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { setFarmerProfile } = useAuth();
-  const BACKEND_URL = process.env.BACKEND_URL; // Replace with your actual IP
+  const AUTH_BACKEND_URL = process.env.AUTH_BACKEND_URL; // Replace with your actual IP
 
   const completeProfile = async () => {
     if (!name.trim()) {
@@ -35,7 +35,7 @@ export default function CompleteProfileScreen() {
         return;
       }
       
-      const response = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
+      const response = await fetch(`${AUTH_BACKEND_URL}/auth/complete-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

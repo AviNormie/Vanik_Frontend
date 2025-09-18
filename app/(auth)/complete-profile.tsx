@@ -16,8 +16,8 @@ export default function CompleteProfileScreen() {
   const [farmSize, setFarmSize] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { user, logout } = useAuth();
-  const AUTH_BACKEND_URL = 'http://localhost:3000'; // Local development server
+  const { user, logout, token } = useAuth();
+  const AUTH_BACKEND_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com';
 
   const completeProfile = async () => {
     if (!name.trim()) {
@@ -28,9 +28,7 @@ export default function CompleteProfileScreen() {
     setIsLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem('token');
-      
-      console.log('🎫 CompleteProfile: Retrieved token:', !!token);
+      console.log('🎫 CompleteProfile: Retrieved token from context:', !!token);
       console.log('👤 CompleteProfile: Current user:', {
         id: user?.id,
         phoneNumber: user?.phoneNumber,
@@ -38,7 +36,8 @@ export default function CompleteProfileScreen() {
       });
       
       if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
+        Alert.alert('Error', 'Authentication token not found. Please login again.');
+        router.replace('/(auth)/login');
         return;
       }
       

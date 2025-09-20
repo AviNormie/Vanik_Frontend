@@ -3,17 +3,43 @@ import { Tabs, Redirect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { logAllAsyncStorage } from '../../utils/asyncStorageLogger';
 
 export default function TabsLayout() {
   const { user, profile, isLoading } = useAuth();
+  const renderCountRef = useRef(0);
   
-  // Debug logging for role detection
-  console.log('🎭 TabsLayout: Current user role:', user?.role);
-  console.log('🎭 TabsLayout: Role check result:', user?.role?.toLowerCase() === 'farmer');
+  // Increment render count and log to detect recursion
+  renderCountRef.current += 1;
   
-  // Check if user is a farmer (handle both 'farmer' and 'FARMER')
-  const isFarmer = user?.role?.toLowerCase() === 'farmer';
-  console.log('🎭 TabsLayout: Is farmer:', isFarmer);
+  // Log AsyncStorage data on first render
+  useEffect(() => {
+    if (renderCountRef.current === 1) {
+      console.log('📦 TabsLayout: Logging AsyncStorage data on first render...');
+      logAllAsyncStorage();
+    }
+    
+    // Detect potential recursion
+    if (renderCountRef.current > 10) {
+      console.warn('⚠️ TabsLayout: Potential recursion detected! Render count:', renderCountRef.current);
+    }
+  }, []);
+  
+  // Memoize role calculation to prevent unnecessary re-renders
+  const isFarmer = useMemo(() => {
+    const result = user?.role?.toLowerCase() === 'farmer';
+    
+    // Only log when role actually changes, not on every render
+    if (renderCountRef.current <= 5) {
+      console.log('🎭 TabsLayout: Current user role:', user?.role);
+      console.log('🎭 TabsLayout: Role check result:', result);
+      console.log('🎭 TabsLayout: Is farmer:', result);
+      console.log('🔄 TabsLayout: Render count:', renderCountRef.current);
+    }
+    
+    return result;
+  }, [user?.role]);
 
   if (isLoading) {
     return (
@@ -29,7 +55,19 @@ export default function TabsLayout() {
   }
 
   // Redirect to complete profile if profile not complete
-  if (!profile?.name) {
+  const hasCompleteProfile = useMemo(() => {
+    if (!profile) return false;
+    
+    if (profile.role === 'FARMER') {
+      return !!profile.farmerProfile?.name;
+    } else if (profile.role === 'RETAILER') {
+      return !!profile.retailerProfile?.businessName;
+    }
+    
+    return false;
+  }, [profile]);
+  
+  if (!hasCompleteProfile) {
     return <Redirect href="/(auth)/complete-profile" />;
   }
 

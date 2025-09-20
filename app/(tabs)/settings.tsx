@@ -1,6 +1,6 @@
 // ]pp/(tabs)/settings.tsx
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Card } from '../components/ui/Card';
 import LogoutButton from '../../components/shared/LogoutButton';
 
@@ -40,6 +40,36 @@ export default function SettingsScreen() {
           <Text style={styles.supportText}>• हेल्पलाइन: 1800-XXX-XXXX</Text>
           <Text style={styles.supportText}>• ईमेल: support@agrotech.com</Text>
           <Text style={styles.supportText}>• सप्ताह के सभी दिन उपलब्ध</Text>
+        </View>
+      </Card>
+
+      <Card>
+        <Text style={styles.sectionTitle}>
+          डिबग टूल्स (Debug Tools)
+        </Text>
+        
+        <View style={styles.debugContainer}>
+          <TouchableOpacity
+            style={styles.debugButton}
+            onPress={async () => {
+              console.log('📦 Debug: Logging AsyncStorage data from settings...');
+              const { logAllAsyncStorage } = await import('../../utils/asyncStorageLogger');
+              await logAllAsyncStorage();
+            }}
+          >
+            <Text style={styles.debugButtonText}>📦 Log Storage Data</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.debugButton}
+            onPress={async () => {
+              console.log('📊 Debug: Getting AsyncStorage info...');
+              const { getAsyncStorageInfo } = await import('../../utils/asyncStorageLogger');
+              await getAsyncStorageInfo();
+            }}
+          >
+            <Text style={styles.debugButtonText}>📊 Storage Info</Text>
+          </TouchableOpacity>
         </View>
       </Card>
 
@@ -91,6 +121,21 @@ const styles = StyleSheet.create({
   supportText: {
     color: '#4b5563',
     fontSize: 16,
+  },
+  debugContainer: {
+    gap: 12,
+  },
+  debugButton: {
+    backgroundColor: '#f3f4f6',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  debugButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    textAlign: 'center',
   },
   logoutContainer: {
     marginTop: 24,

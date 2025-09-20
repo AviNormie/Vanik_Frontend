@@ -101,15 +101,27 @@ export default function CompleteProfileScreen() {
           
           <View style={{ marginTop: 16 }}>
             <Button
-              title="🧹 Clear Storage & Logout (Debug)"
+              title="📦 Log AsyncStorage Data (Debug)"
               onPress={async () => {
-                console.log('🧹 Debug: Clearing storage and logging out');
-                await AsyncStorage.clear();
-                logout();
-                router.replace('/(auth)/login');
+                console.log('📦 Debug: Logging AsyncStorage data...');
+                const { logAllAsyncStorage } = await import('../../utils/asyncStorageLogger');
+                await logAllAsyncStorage();
               }}
-              variant="danger"
+              variant="secondary"
             />
+            
+            <View style={{ marginTop: 8 }}>
+              <Button
+                title="🧹 Clear Storage & Logout (Debug)"
+                onPress={async () => {
+                  console.log('🧹 Debug: Clearing storage and logging out');
+                  await AsyncStorage.clear();
+                  logout();
+                  router.replace('/(auth)/login');
+                }}
+                variant="danger"
+              />
+            </View>
           </View>
         </Card>
       </View>

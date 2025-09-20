@@ -1,11 +1,10 @@
 // config/firebase.ts
-import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 
 // Replace with your actual Firebase config
 const firebaseConfig = {
- apiKey: "AIzaSyC4cG0yHQjS_t2Q4CnN-lCuwFJre8lmVLk",
+  apiKey: "AIzaSyC4cG0yHQjS_t2Q4CnN-lCuwFJre8lmVLk",
   authDomain: "campus-cupid-multiverse.firebaseapp.com",
   projectId: "campus-cupid-multiverse",
   storageBucket: "campus-cupid-multiverse.firebasestorage.app",
@@ -14,10 +13,10 @@ const firebaseConfig = {
   measurementId: "G-N993ZJWKBZ"
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase app only if it hasn't been initialized already
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-});
+// Initialize Firebase Auth
+export const auth = getAuth(app);
 
 export default app;

@@ -1,15 +1,25 @@
 // app/(auth)/login.tsx - REAL FIREBASE VERSION
 import React, { useState, useRef } from 'react';
-import { View, Text, Alert, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Alert, ScrollView, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import app from '../../config/firebase';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+
+// Platform-specific imports
+let FirebaseRecaptchaVerifierModal: any = null;
+let PhoneAuthProvider: any = null;
+let signInWithCredential: any = null;
+
+if (Platform.OS !== 'web') {
+  FirebaseRecaptchaVerifierModal = require('expo-firebase-recaptcha').FirebaseRecaptchaVerifierModal;
+  const firebaseAuth = require('firebase/auth');
+  PhoneAuthProvider = firebaseAuth.PhoneAuthProvider;
+  signInWithCredential = firebaseAuth.signInWithCredential;
+}
 
 const BASE_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com'; // Use env variable or fallback
 console.log('🔧 Login: BASE_URL configured as:', BASE_URL);
@@ -32,30 +42,40 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!recaptchaVerifier.current) {
-      Alert.alert('Error', 'reCAPTCHA not ready. Please wait and try again.');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       const formattedPhone = `+91${phoneNumber}`;
-      console.log('📱 Sending real Firebase OTP to:', formattedPhone);
       
-      const phoneProvider = new PhoneAuthProvider(auth);
-      const verificationId = await phoneProvider.verifyPhoneNumber(
-        formattedPhone,
-        recaptchaVerifier.current
-      );
-      
-      console.log('✅ Firebase Verification ID received:', verificationId);
-      setVerificationId(verificationId);
-      setIsCodeSent(true);
-      Alert.alert('Success', '📱 Real SMS OTP sent to your phone!');
+      if (Platform.OS === 'web') {
+        // For web platform, simulate OTP sending and use backend directly
+        console.log('🌐 Web platform: Simulating OTP for:', formattedPhone);
+        setVerificationId('web-mock-verification-id');
+        setIsCodeSent(true);
+        Alert.alert('Success', '📱 For web demo, use OTP: 123456');
+      } else {
+        // Mobile platform: Use Firebase
+        if (!recaptchaVerifier.current) {
+          Alert.alert('Error', 'reCAPTCHA not ready. Please wait and try again.');
+          return;
+        }
+        
+        console.log('📱 Sending real Firebase OTP to:', formattedPhone);
+        
+        const phoneProvider = new PhoneAuthProvider(auth);
+        const verificationId = await phoneProvider.verifyPhoneNumber(
+          formattedPhone,
+          recaptchaVerifier.current
+        );
+        
+        console.log('✅ Firebase Verification ID received:', verificationId);
+        setVerificationId(verificationId);
+        setIsCodeSent(true);
+        Alert.alert('Success', '📱 Real SMS OTP sent to your phone!');
+      }
       
     } catch (error: any) {
-      console.error('❌ Firebase Send OTP Error:', error);
+      console.error('❌ Send OTP Error:', error);
       Alert.alert('Error', `Failed to send OTP: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -71,17 +91,37 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      console.log('🔍 Verifying Firebase OTP:', verificationCode);
+      let idToken: string;
+      let userUid: string;
+      let userPhoneNumber: string;
       
-      // Firebase verification
-      const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-      const result = await signInWithCredential(auth, credential);
-      
-      console.log('✅ Firebase Auth Success:', result.user.uid);
-      
-      // Get Firebase ID token
-      const idToken = await result.user.getIdToken();
-      console.log('🎫 Got Firebase ID token');
+      if (Platform.OS === 'web') {
+        // Web platform: Mock verification
+        if (verificationCode !== '123456') {
+          Alert.alert('Error', 'Invalid OTP. For web demo, use: 123456');
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log('🌐 Web platform: Mock OTP verification successful');
+        idToken = 'web-mock-token-' + Date.now();
+        userUid = 'web-user-' + phoneNumber;
+        userPhoneNumber = `+91${phoneNumber}`;
+      } else {
+        // Mobile platform: Firebase verification
+        console.log('🔍 Verifying Firebase OTP:', verificationCode);
+        
+        const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
+        const result = await signInWithCredential(auth, credential);
+        
+        console.log('✅ Firebase Auth Success:', result.user.uid);
+        
+        // Get Firebase ID token
+        idToken = await result.user.getIdToken();
+        userUid = result.user.uid;
+        userPhoneNumber = result.user.phoneNumber || `+91${phoneNumber}`;
+        console.log('🎫 Got Firebase ID token');
+      }
       
       // Verify with your backend using Firebase token
       try {
@@ -102,8 +142,8 @@ export default function LoginScreen() {
         console.log('🌐 Login: Making backend request to:', `${BASE_URL}/auth/verify-firebase`);
         console.log('📤 Login: Request payload:', {
           idToken: idToken ? `${idToken.substring(0, 20)}...` : 'null',
-          phoneNumber: result.user.phoneNumber,
-          uid: result.user.uid,
+          phoneNumber: userPhoneNumber,
+          uid: userUid,
         });
         
         const response = await fetch(`${BASE_URL}/auth/verify-firebase`, {
@@ -113,8 +153,8 @@ export default function LoginScreen() {
           },
           body: JSON.stringify({
             idToken,
-            phoneNumber: result.user.phoneNumber,
-            uid: result.user.uid,
+            phoneNumber: userPhoneNumber,
+            uid: userUid,
           }),
         });
 
@@ -158,8 +198,8 @@ export default function LoginScreen() {
         
         // Store Firebase ID token as fallback when backend fails
         const tempUser = {
-          id: result.user.uid,
-          phoneNumber: result.user.phoneNumber || '',
+          id: userUid,
+          phoneNumber: userPhoneNumber || '',
           name: '',
           role: '',
           isNewUser: true
@@ -201,11 +241,13 @@ export default function LoginScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification={true}
-      />
+      {Platform.OS !== 'web' && FirebaseRecaptchaVerifierModal && (
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={firebaseConfig}
+          attemptInvisibleVerification={true}
+        />
+      )}
 
       <View style={styles.content}>
         <Text style={styles.icon}>🌾</Text>
@@ -226,7 +268,10 @@ export default function LoginScreen() {
               />
               
               <Text style={styles.note}>
-                📱 Real SMS will be sent to your phone number
+                {Platform.OS === 'web' 
+                  ? '🌐 Web Demo: Use OTP 123456 after clicking Send OTP'
+                  : '📱 Real SMS will be sent to your phone number'
+                }
               </Text>
               
               <Button
@@ -241,7 +286,10 @@ export default function LoginScreen() {
                 SMS OTP sent to: +91{phoneNumber}
               </Text>
               <Text style={styles.note}>
-                📩 Check your SMS messages for the OTP
+                {Platform.OS === 'web'
+                  ? '🌐 Web Demo: Enter OTP 123456'
+                  : '📩 Check your SMS messages for the OTP'
+                }
               </Text>
               
               <Input

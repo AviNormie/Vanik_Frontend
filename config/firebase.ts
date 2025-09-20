@@ -1,6 +1,5 @@
 // config/firebase.ts
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 // Replace with your actual Firebase config
 const firebaseConfig = {
@@ -13,10 +12,26 @@ const firebaseConfig = {
   measurementId: "G-N993ZJWKBZ"
 };
 
-// Initialize Firebase app only if it hasn't been initialized already
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Platform-specific Firebase initialization
+let app: any = null;
+let auth: any = null;
 
-// Initialize Firebase Auth
-export const auth = getAuth(app);
+if (Platform.OS !== 'web') {
+  // Only initialize Firebase on mobile platforms
+  const { initializeApp, getApps, getApp } = require('firebase/app');
+  const { getAuth } = require('firebase/auth');
+  
+  // Initialize Firebase app only if it hasn't been initialized already
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  
+  // Initialize Firebase Auth
+  auth = getAuth(app);
+} else {
+  // Mock Firebase for web platform
+  console.log('🌐 Running on web - Firebase disabled');
+  app = { options: firebaseConfig };
+  auth = null;
+}
 
+export { auth };
 export default app;

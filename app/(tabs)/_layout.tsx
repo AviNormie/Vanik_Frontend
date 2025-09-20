@@ -92,12 +92,12 @@ export default function TabsLayout() {
               href: null, // Hide this tab
             }}
           />
-          <Tabs.Screen
+          {/* <Tabs.Screen
             name="bulk-purchase"
             options={{
               href: null, // Hide this tab
             }}
-          />
+          /> */}
           <Tabs.Screen
             name="offers"
             options={{
@@ -159,6 +159,18 @@ export default function TabsLayout() {
             name="wallet"
             options={{
               href: null, // Hide this tab for retailers (they have their own wallet in retailer dashboard)
+            }}
+          />
+          <Tabs.Screen
+            name="bulk-purchase"
+            options={{
+              href: null, // Hide this tab
+            }}
+          />
+          <Tabs.Screen
+            name="offers"
+            options={{
+              href: null, // Hide this tab
             }}
           />
         </>

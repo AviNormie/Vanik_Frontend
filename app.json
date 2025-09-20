@@ -45,8 +45,7 @@
             "./assets/fonts/Rubic-SemiBold.ttf"
           ]
         }
-      ],
-      "expo-web-browser"
+      ]
     ],
     "experiments": {
       "typedRoutes": true

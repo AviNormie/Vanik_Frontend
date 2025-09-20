@@ -155,6 +155,19 @@ export default function LoginScreen() {
         
       } catch (backendError: any) {
         console.error('❌ Backend verification failed:', backendError);
+        
+        // Store Firebase ID token as fallback when backend fails
+        const tempUser = {
+          id: result.user.uid,
+          phoneNumber: result.user.phoneNumber || '',
+          name: '',
+          role: '',
+          isNewUser: true
+        };
+        
+        console.log('💾 Login: Storing Firebase ID token as fallback');
+        await login(tempUser, idToken);
+        
         Alert.alert(
           'Backend Error', 
           `Firebase authentication succeeded, but backend verification failed. You can still continue to complete your profile.`,

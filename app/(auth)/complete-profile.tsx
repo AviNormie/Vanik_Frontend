@@ -7,28 +7,57 @@ import { useAuth } from '../../context/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import LogoutButton from '../../components/shared/LogoutButton';
+import RoleSelector from '../../components/auth/RoleSelector';
+import FarmerForm, { FarmerFormData } from '../../components/auth/FarmerForm';
+import RetailerForm, { RetailerFormData } from '../../components/auth/RetailerForm';
 
 export default function CompleteProfileScreen() {
-  const [name, setName] = useState('');
-  const [village, setVillage] = useState('');
-  const [district, setDistrict] = useState('');
-  const [state, setState] = useState('');
-  const [farmSize, setFarmSize] = useState('');
+  const [selectedRole, setSelectedRole] = useState<'FARMER' | 'RETAILER'>('FARMER');
   const [isLoading, setIsLoading] = useState(false);
   
   const { user, logout, token } = useAuth();
   const AUTH_BACKEND_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com';
 
-  const completeProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert('Error', 'कृपया अपना नाम दर्ज करें (Please enter your name)');
-      return;
-    }
+  console.log('🏗️ CompleteProfile: Component initialized with role:', selectedRole);
+  console.log('🔧 CompleteProfile: AUTH_BACKEND_URL configured as:', AUTH_BACKEND_URL);
+  console.log('🔧 CompleteProfile: EXPO_PUBLIC_AUTH_BACKEND_URL env var:', process.env.EXPO_PUBLIC_AUTH_BACKEND_URL);
+  console.log('👤 CompleteProfile: Current user context:', {
+    userId: user?.id,
+    phoneNumber: user?.phoneNumber,
+    hasToken: !!token
+  });
 
+  const handleRoleChange = (role: 'FARMER' | 'RETAILER') => {
+    console.log('🔄 CompleteProfile: Role changed from', selectedRole, 'to', role);
+    setSelectedRole(role);
+  };
+
+  const handleFarmerSubmit = async (formData: FarmerFormData) => {
+    console.log('🌾 CompleteProfile: Submitting farmer data:', formData);
+    await submitProfile('FARMER', formData);
+  };
+
+  const handleRetailerSubmit = async (formData: RetailerFormData) => {
+    console.log('🏪 CompleteProfile: Submitting retailer data:', formData);
+    await submitProfile('RETAILER', formData);
+  };
+
+  const submitProfile = async (role: 'FARMER' | 'RETAILER', formData: FarmerFormData | RetailerFormData) => {
     setIsLoading(true);
 
     try {
       console.log('🎫 CompleteProfile: Retrieved token from context:', !!token);
+      console.log('🎫 CompleteProfile: Token value (first 50 chars):', token ? token.substring(0, 50) : 'null');
+      
+      // Also check AsyncStorage directly
+      const storedTokenData = await AsyncStorage.getItem('tokenData');
+      console.log('💾 CompleteProfile: Direct AsyncStorage token check:', !!storedTokenData);
+      if (storedTokenData) {
+        const parsedTokenData = JSON.parse(storedTokenData);
+        console.log('💾 CompleteProfile: Stored token (first 50 chars):', parsedTokenData.token ? parsedTokenData.token.substring(0, 50) : 'null');
+      }
+      
       console.log('👤 CompleteProfile: Current user:', {
         id: user?.id,
         phoneNumber: user?.phoneNumber,
@@ -41,46 +70,62 @@ export default function CompleteProfileScreen() {
         return;
       }
       
+      // Map form data to backend expected format
+      let mappedData: any = { ...formData };
+      
+      // For retailers, map ownerName to name field that backend expects
+      if (role === 'RETAILER' && 'ownerName' in formData) {
+        const retailerData = formData as RetailerFormData;
+        mappedData.name = retailerData.ownerName;
+        delete mappedData.ownerName; // Remove the original field
+      }
+      
+      const payload = {
+        token, // Include token in request body
+        role,
+        ...mappedData,
+        userId: user?.id,
+        phoneNumber: user?.phoneNumber
+      };
+      
+      console.log('📤 CompleteProfile: Sending payload to backend:', payload);
+      console.log('🎫 CompleteProfile: Using token in request body:', token ? `${token.substring(0, 20)}...` : 'null');
+      
       const response = await fetch(`${AUTH_BACKEND_URL}/auth/complete-profile`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          token,
-          name,
-          village: village || undefined,
-          district: district || undefined,
-          state: state || undefined,
-          farmSize: farmSize ? parseFloat(farmSize) : undefined,
-          cropTypes: [],
-          language: 'hindi'
-        })
+        body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      console.log('📥 CompleteProfile: Backend response status:', response.status);
       
-      if (data.success) {
-        console.log('✅ CompleteProfile: Profile completed successfully:', data.farmer);
-        
-        // Update user data in storage with the new profile info
-        if (user) {
-          const updatedUser = { ...user, name: data.farmer.name };
-          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-          console.log('💾 CompleteProfile: Updated user data in storage');
-        }
-        
-        Alert.alert(
-          'Success', 
-          'प्रोफाइल पूरी हो गई! (Profile completed successfully!) 🎉',
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-        );
-      } else {
-        Alert.alert('Error', data.message || 'Failed to complete profile');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ CompleteProfile: Backend error response:', errorText);
+        throw new Error(`Backend responded with ${response.status}: ${errorText}`);
       }
+
+      const data = await response.json();
+      console.log('✅ CompleteProfile: Profile completed successfully:', data);
+      
+      // Update user data in storage with the new profile info
+      if (user && data.user) {
+        const updatedUser = { ...user, ...data.user, role };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('💾 CompleteProfile: Updated user data in storage with role:', role);
+      }
+      
+      Alert.alert(
+        'Success', 
+        `${role === 'FARMER' ? '🌾 किसान' : '🏪 व्यापारी'} प्रोफाइल पूरी हो गई! (Profile completed successfully!) 🎉`,
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+      );
+      
     } catch (error: any) {
-      console.error('Complete Profile Error:', error);
-      Alert.alert('Error', 'प्रोफाइल पूरी करने में त्रुटि (Failed to complete profile)');
+      console.error('❌ CompleteProfile: Error:', error);
+      Alert.alert('Error', `प्रोफाइल पूरी करने में त्रुटि (Failed to complete profile): ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -92,63 +137,32 @@ export default function CompleteProfileScreen() {
         <Text style={styles.title}>🌾 अपनी जानकारी भरें</Text>
         <Text style={styles.subtitle}>Complete Your Profile</Text>
 
-        <Card>
-          <Input
-            label="नाम (Name) *"
-            value={name}
-            onChangeText={setName}
-            placeholder="राम कुमार (Ram Kumar)"
-            autoFocus
+        <View style={styles.roleSelectorContainer}>
+          <RoleSelector
+            selectedRole={selectedRole}
+            onRoleChange={handleRoleChange}
           />
+        </View>
 
-          <Input
-            label="गाँव (Village)"
-            value={village}
-            onChangeText={setVillage}
-            placeholder="बागपत (Bagpat)"
+        {selectedRole === 'FARMER' ? (
+          <FarmerForm
+            onSubmit={handleFarmerSubmit}
+            isLoading={isLoading}
           />
-
-          <Input
-            label="जिला (District)"
-            value={district}
-            onChangeText={setDistrict}
-            placeholder="मेरठ (Meeruth)"
+        ) : (
+          <RetailerForm
+            onSubmit={handleRetailerSubmit}
+            isLoading={isLoading}
           />
-
-          <Input
-            label="राज्य (State)"
-            value={state}
-            onChangeText={setState}
-            placeholder="उत्तर प्रदेश (Uttar Pradesh)"
+        )}
+        
+        <View style={styles.debugContainer}>
+          <LogoutButton
+            title="🧹 Clear Storage & Logout (Debug)"
+            variant="danger"
+            showConfirmation={false}
           />
-
-          <Input
-            label="खेत का आकार (Farm Size in Acres)"
-            value={farmSize}
-            onChangeText={setFarmSize}
-            placeholder="5.5"
-            keyboardType="decimal-pad"
-          />
-
-          <Button
-            title={isLoading ? 'सेव हो रहा है...' : 'पूरा करें (Complete)'}
-            onPress={completeProfile}
-            loading={isLoading}
-          />
-          
-          <View style={{ marginTop: 16 }}>
-            <Button
-              title="🧹 Clear Storage & Logout (Debug)"
-              onPress={async () => {
-                console.log('🧹 Debug: Clearing storage and logging out');
-                await AsyncStorage.clear();
-                logout();
-                router.replace('/(auth)/login');
-              }}
-              variant="danger"
-            />
-          </View>
-        </Card>
+        </View>
       </View>
     </ScrollView>
   );
@@ -175,5 +189,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     color: '#6b7280',
+  },
+  roleSelectorContainer: {
+    marginBottom: 24,
+  },
+  debugContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
 });

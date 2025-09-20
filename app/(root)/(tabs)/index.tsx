@@ -1,3 +1,4 @@
+import LogoutButton from "@/components/shared/LogoutButton";
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
@@ -6,6 +7,8 @@ export default function Index() {
     <View style={styles.container}>
       <Text style={styles.title}>AI-Based Farmer Query Support</Text>
       <Text style={styles.subtitle}>Get expert agricultural advice and support</Text>
+      <LogoutButton />
+      <Text >hii</Text>
     </View>
   );
 }

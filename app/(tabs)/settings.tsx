@@ -1,78 +1,98 @@
-// app/(tabs)/settings.tsx
+// ]pp/(tabs)/settings.tsx
 import React from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { router } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { Button } from '../components/ui/Button';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Card } from '../components/ui/Card';
+import LogoutButton from '../../components/shared/LogoutButton';
 
 export default function SettingsScreen() {
-  const { logout } = useAuth();
-
-  const handleLogout = () => {
-    Alert.alert(
-      'लॉगआउट (Logout)',
-      'क्या आप वाकई लॉगआउट करना चाहते हैं? (Are you sure you want to logout?)',
-      [
-        { text: 'रद्द करें (Cancel)', style: 'cancel' },
-        {
-          text: 'हाँ (Yes)',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/(auth)/login');
-            } catch (error) {
-              Alert.alert('Error', 'लॉगआउट में त्रुटि (Failed to logout)');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   return (
-    <ScrollView className="flex-1 bg-green-50 p-6">
-      <Card className="mb-6">
-        <Text className="text-xl font-bold mb-4 text-gray-800">
+    <ScrollView style={styles.container}>
+      <Card>
+        <Text style={styles.sectionTitle}>
           ऐप सेटिंग्स (App Settings)
         </Text>
         
-        <View className="space-y-4">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-gray-700">भाषा (Language)</Text>
-            <Text className="text-gray-500">हिंदी/English</Text>
+        <View style={styles.settingsContainer}>
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>भाषा (Language)</Text>
+            <Text style={styles.settingValue}>हिंदी/English</Text>
           </View>
           
-          <View className="flex-row justify-between items-center">
-            <Text className="text-gray-700">सूचनाएं (Notifications)</Text>
-            <Text className="text-green-600">चालू (On)</Text>
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>सूचनाएं (Notifications)</Text>
+            <Text style={styles.settingValueActive}>चालू (On)</Text>
           </View>
           
-          <View className="flex-row justify-between items-center">
-            <Text className="text-gray-700">ऐप वर्जन (App Version)</Text>
-            <Text className="text-gray-500">1.0.0</Text>
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>ऐप वर्जन (App Version)</Text>
+            <Text style={styles.settingValue}>1.0.0</Text>
           </View>
         </View>
       </Card>
 
-      <Card className="mb-6">
-        <Text className="text-xl font-bold mb-4 text-gray-800">
+      <Card>
+        <Text style={styles.sectionTitle}>
           सहायता (Support)
         </Text>
         
-        <View className="space-y-3">
-          <Text className="text-gray-600">• हेल्पलाइन: 1800-XXX-XXXX</Text>
-          <Text className="text-gray-600">• ईमेल: support@agrotech.com</Text>
-          <Text className="text-gray-600">• सप्ताह के सभी दिन उपलब्ध</Text>
+        <View style={styles.supportContainer}>
+          <Text style={styles.supportText}>• हेल्पलाइन: 1800-XXX-XXXX</Text>
+          <Text style={styles.supportText}>• ईमेल: support@agrotech.com</Text>
+          <Text style={styles.supportText}>• सप्ताह के सभी दिन उपलब्ध</Text>
         </View>
       </Card>
 
-      <Button
-        title="लॉगआउट (Logout)"
-        onPress={handleLogout}
-        variant="danger"
-      />
+      <View style={styles.logoutContainer}>
+        <LogoutButton
+          title="लॉगआउट (Logout)"
+          variant="danger"
+        />
+      </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f0fdf4',
+    padding: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#1f2937',
+  },
+  settingsContainer: {
+    gap: 16,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  settingLabel: {
+    color: '#374151',
+    fontSize: 16,
+  },
+  settingValue: {
+    color: '#6b7280',
+    fontSize: 16,
+  },
+  settingValueActive: {
+    color: '#16a34a',
+    fontSize: 16,
+  },
+  supportContainer: {
+    gap: 12,
+  },
+  supportText: {
+    color: '#4b5563',
+    fontSize: 16,
+  },
+  logoutContainer: {
+    marginTop: 24,
+  },
+});

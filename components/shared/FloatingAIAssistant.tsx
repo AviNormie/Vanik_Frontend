@@ -20,7 +20,7 @@ import { BlurView } from 'expo-blur';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_AI_API_BASE_URL || 'https://agro-ai-service-647646574109.asia-south1.run.app';
+const API_BASE_URL = process.env.EXPO_PUBLIC_AI_API_BASE_URL || 'http://10.12.139.117:3000';
 const { width, height } = Dimensions.get('window');
 
 interface Message {
@@ -28,6 +28,8 @@ interface Message {
   type: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  audioData?: string; // Base64 audio data for replay
+  isAudio?: boolean; // Flag to indicate if this is an audio message
 }
 
 export default function FloatingAIAssistant() {
@@ -39,10 +41,22 @@ export default function FloatingAIAssistant() {
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('AI is thinking...');
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('ml'); // Default to Malayalam
   const scrollViewRef = useRef<ScrollView>(null);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const loadingIntervalRef = useRef<number | null>(null);
+
+  // Language options
+  const languageOptions = [
+    { code: 'ml', name: 'Malayalam', flag: '🇮🇳' },
+    { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+    { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+    { code: 'te', name: 'Telugu', flag: '🇮🇳' },
+    { code: 'kn', name: 'Kannada', flag: '🇮🇳' },
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+  ];
 
   // Engaging loading messages
   const loadingMessages = [
@@ -56,12 +70,14 @@ export default function FloatingAIAssistant() {
   ];
 
   // Add message to chat
-  const addMessage = (type: 'user' | 'assistant', content: string) => {
+  const addMessage = (type: 'user' | 'assistant', content: string, audioData?: string, isAudio?: boolean) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       type,
       content,
       timestamp: new Date(),
+      audioData,
+      isAudio,
     };
     setMessages(prev => [...prev, newMessage]);
     
@@ -69,6 +85,44 @@ export default function FloatingAIAssistant() {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 150);
+  };
+
+  // Replay audio function
+  const replayAudio = async (audioData: string, messageId: string) => {
+    try {
+      setCurrentlyPlaying(messageId);
+      console.log('🔊 Replaying audio for message:', messageId);
+      
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mp3;base64,${audioData}` },
+        { 
+          shouldPlay: true,
+          isLooping: false,
+          volume: 1.0,
+          progressUpdateIntervalMillis: 100,
+        },
+        (status) => {
+          console.log('🔊 Replay status:', status);
+        }
+      );
+      
+      // Handle playback completion
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            console.log('🔊 Audio replay completed');
+            setCurrentlyPlaying(null);
+            await sound.unloadAsync();
+          }
+        } else if (status.error) {
+          console.error('🔊 Replay error:', status.error);
+          setCurrentlyPlaying(null);
+        }
+      });
+    } catch (error) {
+      console.error('🔊 Error replaying audio:', error);
+      setCurrentlyPlaying(null);
+    }
   };
 
   // Enhanced scroll to bottom function
@@ -191,7 +245,7 @@ export default function FloatingAIAssistant() {
           text: userMessage,
           userId: user?.id || 'anonymous-user',
           returnAudio: true,
-          language: 'ml', // Always use Malayalam for TTS
+          language: selectedLanguage, // Use selected language for TTS
         }, {
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +297,7 @@ export default function FloatingAIAssistant() {
               }
             });
             
-            addMessage('assistant', '🔊 Audio response playing...');
+            addMessage('assistant', '🔊 Audio response playing...', audioData, true);
           } else {
             console.log('🤖 AI Assistant: Empty audio data received');
           }
@@ -316,9 +370,31 @@ export default function FloatingAIAssistant() {
       });
 
       console.log('🎤 AI Assistant: Creating audio recording...');
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.mp3',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.mp3',
+          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/mp3',
+          bitsPerSecond: 128000,
+        },
+      });
       
       setRecording(recording);
       setIsRecording(true);
@@ -376,14 +452,15 @@ export default function FloatingAIAssistant() {
       const formData = new FormData();
       formData.append('audio', {
         uri: audioUri,
-        type: 'audio/m4a',
-        name: 'audio.m4a',
+        type: 'audio/mp3',
+        name: 'audio.mp3',
       } as any);
       formData.append('userId', user?.id || 'anonymous-user');
-      formData.append('language', 'ml'); // Always use Malayalam for TTS
+      formData.append('language', selectedLanguage); // Use selected language for TTS
 
       console.log('🎤 AI Assistant: FormData prepared, sending to API...');
       console.log('🎤 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/process`);
+      console.log('🎤 AI Assistant: Using local IP for backend:', API_BASE_URL);
       
       const response = await axios.post(`${API_BASE_URL}/orchestrator/process?returnAudio=true`, formData, {
         headers: {
@@ -435,7 +512,7 @@ export default function FloatingAIAssistant() {
         }
       });
       
-      addMessage('assistant', '🔊 Audio response playing...');
+      addMessage('assistant', '🔊 Audio response playing...', audioData, true);
       console.log('🎤 AI Assistant: Audio query completed successfully');
     } catch (error) {
       console.error('🎤 AI Assistant: Audio query error occurred:', error);
@@ -525,9 +602,27 @@ export default function FloatingAIAssistant() {
                           <Text style={styles.headerSubtitle}>Ask anything about farming</Text>
                         </View>
                       </View>
-                      <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color="#6b7280" />
-                      </TouchableOpacity>
+                      <View style={styles.headerRight}>
+                        {/* Language Selector */}
+                        <View style={styles.languageSelector}>
+                          <Text style={styles.languageLabel}>
+                            {languageOptions.find(lang => lang.code === selectedLanguage)?.flag} {languageOptions.find(lang => lang.code === selectedLanguage)?.name}
+                          </Text>
+                          <TouchableOpacity 
+                            style={styles.languageButton}
+                            onPress={() => {
+                              const currentIndex = languageOptions.findIndex(lang => lang.code === selectedLanguage);
+                              const nextIndex = (currentIndex + 1) % languageOptions.length;
+                              setSelectedLanguage(languageOptions[nextIndex].code);
+                            }}
+                          >
+                            <Ionicons name="chevron-down" size={16} color="#6b7280" />
+                          </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                          <Ionicons name="close" size={24} color="#6b7280" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {/* Messages */}
@@ -591,6 +686,25 @@ export default function FloatingAIAssistant() {
                             >
                               {message.content}
                             </Text>
+                            {message.isAudio && message.audioData && (
+                              <TouchableOpacity
+                                style={[
+                                  styles.replayButton,
+                                  currentlyPlaying === message.id && styles.replayButtonPlaying
+                                ]}
+                                onPress={() => replayAudio(message.audioData!, message.id)}
+                                disabled={currentlyPlaying === message.id}
+                              >
+                                <Ionicons 
+                                  name={currentlyPlaying === message.id ? "stop" : "play"} 
+                                  size={16} 
+                                  color="white" 
+                                />
+                                <Text style={styles.replayButtonText}>
+                                  {currentlyPlaying === message.id ? "Playing..." : "Replay"}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
                           </View>
                           <Text style={styles.messageTimestamp}>
                             {message.timestamp.toLocaleTimeString()}
@@ -735,6 +849,30 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  languageLabel: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  languageButton: {
+    padding: 2,
   },
   headerIcon: {
     width: 40,
@@ -956,5 +1094,24 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginLeft: 8,
     fontWeight: '500',
+  },
+  replayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  replayButtonPlaying: {
+    backgroundColor: '#dc2626',
+  },
+  replayButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });

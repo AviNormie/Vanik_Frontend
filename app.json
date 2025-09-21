@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.avi_srivastava.agrosupport"
     },
     "web": {
       "bundler": "metro",
@@ -49,6 +50,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16779649-cbc3-42b5-865f-eb27d6302883"
+      }
     }
   }
 }

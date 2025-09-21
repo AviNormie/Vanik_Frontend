@@ -38,7 +38,7 @@ class BackgroundSyncService {
       await this.performSync(token);
       
       // Set up periodic sync
-      this.syncInterval = setInterval(async () => {
+      this.syncInterval = setTimeout(async () => {
         await this.performSync(token);
       }, this.SYNC_INTERVAL_MS);
       

@@ -19,6 +19,7 @@ import { Audio } from 'expo-av';
 import { BlurView } from 'expo-blur';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { profileStorageService } from '../../services/profileStorageService';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_AI_API_BASE_URL || 'http://10.12.139.117:3000';
 const { width, height } = Dimensions.get('window');
@@ -86,6 +87,69 @@ export default function FloatingAIAssistant() {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 150);
   };
+
+  // Build context from past 3 chats and user profile
+  const buildContext = async (): Promise<string> => {
+    try {
+      console.log('🔄 Building context from past 3 chats and user profile');
+      
+      // Get user profile information
+      const profile = await profileStorageService.loadProfile();
+      let contextParts: string[] = [];
+      
+      // Add profile information to context
+      if (profile) {
+        contextParts.push('=== USER PROFILE ===');
+        contextParts.push(`User ID: ${profile.id}`);
+        contextParts.push(`Role: ${profile.role}`);
+        
+        if (profile.role === 'FARMER' && profile.farmerProfile) {
+          const farmer = profile.farmerProfile;
+          contextParts.push(`Name: ${farmer.name}`);
+          contextParts.push(`Location: ${farmer.village}, ${farmer.district}, ${farmer.state}`);
+          contextParts.push(`Farm Size: ${farmer.farmSize}`);
+          contextParts.push(`Crop Types: ${farmer.cropTypes}`);
+          contextParts.push(`Experience: ${farmer.experience}`);
+          contextParts.push(`Land Ownership: ${farmer.landOwnership}`);
+          contextParts.push(`Irrigation Type: ${farmer.irrigationType}`);
+          contextParts.push(`Language: ${farmer.language}`);
+        } else if (profile.role === 'RETAILER' && profile.retailerProfile) {
+          const retailer = profile.retailerProfile;
+          contextParts.push(`Business Name: ${retailer.businessName}`);
+          contextParts.push(`Owner Name: ${retailer.ownerName}`);
+          contextParts.push(`Business Type: ${retailer.businessType}`);
+          contextParts.push(`Location: ${retailer.city}, ${retailer.state}`);
+          contextParts.push(`Experience: ${retailer.experience}`);
+          contextParts.push(`Specialization: ${retailer.specialization}`);
+          contextParts.push(`Language: ${retailer.language}`);
+        }
+        contextParts.push('');
+      }
+      
+      // Add past 3 chat messages to context
+      const recentMessages = messages.slice(-6); // Get last 6 messages (3 pairs of user-assistant)
+      if (recentMessages.length > 0) {
+        contextParts.push('=== RECENT CONVERSATION (LAST 3 EXCHANGES) ===');
+        recentMessages.forEach((msg, index) => {
+          const role = msg.type === 'user' ? 'User' : 'Assistant';
+          contextParts.push(`${role}: ${msg.content}`);
+        });
+        contextParts.push('');
+      }
+      
+      const context = contextParts.join('\n');
+      console.log('✅ Context built successfully:', {
+        profileIncluded: !!profile,
+        messagesIncluded: recentMessages.length,
+        contextLength: context.length
+      });
+      
+      return context;
+     } catch (error) {
+       console.error('❌ Error building context:', error);
+       return '';
+     }
+   };
 
   // Replay audio function
   const replayAudio = async (audioData: string, messageId: string) => {
@@ -237,15 +301,18 @@ export default function FloatingAIAssistant() {
     startLoadingMessages();
 
     try {
-      console.log('🤖 AI Assistant: Preparing axios request for text query');
+      // Build context from past 3 chats and user profile
+      const context = await buildContext();
+      
       console.log('🤖 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/text`);
-      console.log('🤖 AI Assistant: Request payload:', { text: userMessage });
+      console.log('🤖 AI Assistant: Request payload:', { text: userMessage, context: context.substring(0, 200) + '...' });
       
       const response = await axios.post(`${API_BASE_URL}/orchestrator/text`, {
           text: userMessage,
           userId: user?.id || 'anonymous-user',
           returnAudio: true,
           language: selectedLanguage, // Use selected language for TTS
+          context: context, // Include context with past 3 chats and profile info
         }, {
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +322,7 @@ export default function FloatingAIAssistant() {
 
       console.log('🤖 AI Assistant: Text API response status:', response.status);
       console.log('🤖 AI Assistant: Text API response headers:', response.headers);
-      console.log('🤖 AI Assistant: Text API response data:', response.data);
+      // console.log('🤖 AI Assistant: Text API response data:', response.data);
       
       const responseText = response.data?.text || response.data?.message || 'Sorry, I could not process your request.';
       console.log('🤖 AI Assistant: Extracted response text:', responseText);
@@ -449,6 +516,9 @@ export default function FloatingAIAssistant() {
     try {
       console.log('🎤 AI Assistant: Preparing FormData for audio upload');
       
+      // Build context from past 3 chats and user profile
+      const context = await buildContext();
+      
       const formData = new FormData();
       formData.append('audio', {
         uri: audioUri,
@@ -457,6 +527,7 @@ export default function FloatingAIAssistant() {
       } as any);
       formData.append('userId', user?.id || 'anonymous-user');
       formData.append('language', selectedLanguage); // Use selected language for TTS
+      formData.append('context', context); // Include context with past 3 chats and profile info
 
       console.log('🎤 AI Assistant: FormData prepared, sending to API...');
       console.log('🎤 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/process`);

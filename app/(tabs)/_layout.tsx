@@ -4,8 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useEffect, useRef } from 'react';
-import { logAllAsyncStorage } from '../../utils/asyncStorageLogger';
-import FloatingAIAssistant from '../../components/shared/FloatingAIAssistant';
 
 export default function TabsLayout() {
   const { user, profile, isLoading } = useAuth();
@@ -14,13 +12,8 @@ export default function TabsLayout() {
   // Increment render count and log to detect recursion
   renderCountRef.current += 1;
   
-  // Log AsyncStorage data on first render
+  // Log render count to detect potential recursion
   useEffect(() => {
-    if (renderCountRef.current === 1) {
-      console.log('📦 TabsLayout: Logging AsyncStorage data on first render...');
-      logAllAsyncStorage();
-    }
-    
     // Detect potential recursion
     if (renderCountRef.current > 10) {
       console.warn('⚠️ TabsLayout: Potential recursion detected! Render count:', renderCountRef.current);
@@ -29,18 +22,20 @@ export default function TabsLayout() {
   
   // Memoize role calculation to prevent unnecessary re-renders
   const isFarmer = useMemo(() => {
-    const result = user?.role?.toLowerCase() === 'farmer';
+    // Check multiple possible role formats
+    const userRole = user?.role?.toLowerCase();
+    const profileRole = profile?.role?.toLowerCase();
     
-    // Only log when role actually changes, not on every render
-    if (renderCountRef.current <= 5) {
-      console.log('🎭 TabsLayout: Current user role:', user?.role);
-      console.log('🎭 TabsLayout: Role check result:', result);
-      console.log('🎭 TabsLayout: Is farmer:', result);
-      console.log('🔄 TabsLayout: Render count:', renderCountRef.current);
-    }
+    const result = userRole === 'farmer' || profileRole === 'farmer';
+    
+    // Enhanced logging for debugging
+    console.log('🎭 TabsLayout: User object:', user);
+    console.log('🎭 TabsLayout: User role:', user?.role);
+    console.log('🎭 TabsLayout: Profile role:', profile?.role);
+    console.log('🎭 TabsLayout: Is farmer result:', result);
     
     return result;
-  }, [user?.role]);
+  }, [user?.role, profile?.role]);
 
   if (isLoading) {
     return (
@@ -72,8 +67,89 @@ export default function TabsLayout() {
     return <Redirect href="/(auth)/complete-profile" />;
   }
 
-  return (
+  // Render completely different tab layouts based on role
+  if (isFarmer) {
+    // FARMER LAYOUT - ONLY 2 TABS: Farmer Dashboard + Wallet
+    return (
       <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#16a34a',
+          tabBarInactiveTintColor: '#6b7280',
+          headerStyle: {
+            backgroundColor: '#16a34a',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        <Tabs.Screen
+          name="farmer-dashboard"
+          options={{
+            title: 'Sell Crops',
+            headerTitle: '🌾 Farmer Dashboard',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="leaf" size={size} color={color} />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="wallet"
+          options={{
+            title: 'Wallet',
+            headerTitle: '💰 My Wallet',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="wallet" size={size} color={color} />
+            ),
+          }}
+        />
+
+        {/* Hide all other tabs for farmers */}
+        <Tabs.Screen
+          name="index"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+        <Tabs.Screen
+          name="retailer-dashboard"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+        <Tabs.Screen
+          name="bulk-purchase"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+        <Tabs.Screen
+          name="offers"
+          options={{
+            href: null, // This hides the tab
+          }}
+        />
+      </Tabs>
+    );
+  }
+
+  // RETAILER LAYOUT - ONLY 3 TABS: Retailer Dashboard, Bulk, Wallet, Offers
+  return (
+    <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#16a34a',
         tabBarInactiveTintColor: '#6b7280',
@@ -86,136 +162,72 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* Farmer-specific simple layout */}
-      {isFarmer ? (
-        <>
-          <Tabs.Screen
-            name="farmer-dashboard"
-            options={{
-              title: 'My Crops',
-              headerTitle: '🌾 My Listings',
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="leaf" size={size} color={color} />
-              ),
-            }}
-          />
+      <Tabs.Screen
+        name="retailer-dashboard"
+        options={{
+          title: 'Marketplace',
+          headerTitle: '🛒 Retailer Marketplace',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="storefront" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bulk-purchase"
+        options={{
+          title: 'Bulk',
+          headerTitle: '📦 Bulk Purchase',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cube" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          title: 'Wallet',
+          headerTitle: '💰 My Wallet',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="offers"
+        options={{
+          title: 'Offers',
+          headerTitle: '💼 My Offers',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="briefcase" size={size} color={color} />
+          ),
+        }}
+      />
 
-          {/* Hide wallet tab for farmers */}
-          <Tabs.Screen
-            name="wallet"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          {/* Hide other tabs for farmers */}
-          <Tabs.Screen
-            name="index"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          <Tabs.Screen
-            name="retailer-dashboard"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          {/* <Tabs.Screen
-            name="bulk-purchase"
-            options={{
-              href: null, // Hide this tab
-            }}
-          /> */}
-          <Tabs.Screen
-            name="offers"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-        </>
-      ) : (
-        /* Retailer layout */
-        <>
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: 'डैशबोर्ड',
-              headerTitle: '🌾 Dashboard',
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="home" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{
-              title: 'प्रोफाइल',
-              headerTitle: '👨‍🌾 Profile',
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="person" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="retailer-dashboard"
-            options={{
-              title: 'मार्केट',
-              headerTitle: '🛒 Retailer Marketplace',
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="storefront" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{
-              title: 'सेटिंग्स',
-              headerTitle: '⚙️ Settings',
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="settings" size={size} color={color} />
-              ),
-            }}
-          />
-
-          {/* Hide farmer-specific tabs for retailers */}
-          <Tabs.Screen
-            name="farmer-dashboard"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          <Tabs.Screen
-            name="wallet"
-            options={{
-              href: null, // Hide this tab for retailers (they have their own wallet in retailer dashboard)
-            }}
-          />
-          <Tabs.Screen
-            name="bulk-purchase"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-          <Tabs.Screen
-            name="offers"
-            options={{
-              href: null, // Hide this tab
-            }}
-          />
-        </>
-      )}
-      </Tabs>
+      {/* Hide tabs that retailers shouldn't see */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null, // This hides the tab
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          href: null, // This hides the tab
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null, // This hides the tab
+        }}
+      />
+      <Tabs.Screen
+        name="farmer-dashboard"
+        options={{
+          href: null, // This hides the tab
+        }}
+      />
+    </Tabs>
   );
 }

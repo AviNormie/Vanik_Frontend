@@ -9,12 +9,16 @@ import {
   Modal,
   FlatList,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import MapView, { Marker, Callout } from 'react-native-maps';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { WalletService } from '../../services/walletService';
 import { apiService, CropListing, CreateOfferDto } from '../../services/apiService';
+
+const { width, height } = Dimensions.get('window');
 
 interface BulkCartItem {
   id: string;
@@ -32,6 +36,15 @@ export default function RetailerDashboard() {
   const [locationFilter, setLocationFilter] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
   const [showMapView, setShowMapView] = useState(false);
+  const [priceRangeMin, setPriceRangeMin] = useState('');
+  const [priceRangeMax, setPriceRangeMax] = useState('');
+  const [locationRadius, setLocationRadius] = useState('10');
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 28.6139,
+    longitude: 77.2090,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
   const [walletBalance, setWalletBalance] = useState(0);
   const [bulkCart, setBulkCart] = useState<BulkCartItem[]>([]);
   const [showBulkCart, setShowBulkCart] = useState(false);
@@ -78,6 +91,9 @@ export default function RetailerDashboard() {
       if (searchQuery.trim()) searchParams.query = searchQuery.trim();
       if (locationFilter.trim()) searchParams.location = locationFilter.trim();
       if (selectedCrop) searchParams.cropType = selectedCrop;
+      if (priceRangeMin) searchParams.minPrice = parseFloat(priceRangeMin);
+      if (priceRangeMax) searchParams.maxPrice = parseFloat(priceRangeMax);
+      if (locationRadius) searchParams.radius = parseFloat(locationRadius);
       
       // Call API with search parameters
       const searchResults = await apiService.searchListings(searchParams);
@@ -90,6 +106,57 @@ export default function RetailerDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addToBulkCart = (listing: CropListing) => {
+    const cartItem: BulkCartItem = {
+      id: listing.id,
+      cropType: listing.cropType,
+      farmer: listing.farmerId,
+      price: listing.expectedPrice.toString(),
+      quantity: listing.quantityKg.toString(),
+      location: listing.location || 'Unknown',
+      selected: true,
+    };
+    
+    setBulkCart(prev => {
+      const exists = prev.find(item => item.id === listing.id);
+      if (exists) {
+        Alert.alert('Already Added', 'This listing is already in your bulk cart');
+        return prev;
+      }
+      Alert.alert('Added to Bulk Cart', `${listing.cropType} from farmer added to bulk cart`);
+      return [...prev, cartItem];
+    });
+  };
+
+  const removeFromBulkCart = (listingId: string) => {
+    setBulkCart(prev => prev.filter(item => item.id !== listingId));
+  };
+
+  const calculateBulkTotal = () => {
+    return bulkCart.reduce((total, item) => {
+      if (item.selected) {
+        const pricePerKg = parseFloat(item.price) / 100; // Convert from per quintal to per kg
+        return total + (pricePerKg * parseFloat(item.quantity));
+      }
+      return total;
+    }, 0);
+  };
+
+  const calculateBulkQuantity = () => {
+    return bulkCart.reduce((total, item) => {
+      if (item.selected) {
+        return total + parseFloat(item.quantity);
+      }
+      return total;
+    }, 0);
+  };
+
+  const calculateBulkAvgPrice = () => {
+    const totalQuantity = calculateBulkQuantity();
+    const totalPrice = calculateBulkTotal();
+    return totalQuantity > 0 ? totalPrice / totalQuantity : 0;
   };
 
   const loadWalletBalance = async () => {
@@ -249,6 +316,64 @@ export default function RetailerDashboard() {
     }
   };
 
+  const renderMapView = () => {
+    return (
+      <View style={styles.mapContainer}>
+        <MapView
+          style={styles.map}
+          region={mapRegion}
+          onRegionChangeComplete={setMapRegion}
+        >
+          {listings.map((listing) => {
+            // Generate random coordinates near the region center for demo
+            const lat = mapRegion.latitude + (Math.random() - 0.5) * 0.1;
+            const lng = mapRegion.longitude + (Math.random() - 0.5) * 0.1;
+            
+            return (
+              <Marker
+                key={listing.id}
+                coordinate={{ latitude: lat, longitude: lng }}
+                title={listing.cropType}
+                description={`${listing.quantityKg}kg - ₹${listing.expectedPrice}/quintal`}
+              >
+                <Callout>
+                  <View style={styles.calloutContainer}>
+                    <Text style={styles.calloutTitle}>{listing.cropType}</Text>
+                    <Text style={styles.calloutText}>Quantity: {listing.quantityKg}kg</Text>
+                    <Text style={styles.calloutText}>Price: ₹{listing.expectedPrice}/quintal</Text>
+                    <Text style={styles.calloutText}>Farmer: {listing.farmerId}</Text>
+                    {listing.location && (
+                      <Text style={styles.calloutText}>📍 {listing.location}</Text>
+                    )}
+                    <View style={styles.calloutButtons}>
+                      <TouchableOpacity
+                        style={styles.calloutButton}
+                        onPress={() => {
+                          setSelectedListing(listing);
+                          setOfferAmount(listing.expectedPrice.toString());
+                          setOfferQuantity(listing.quantityKg.toString());
+                          setShowOfferModal(true);
+                        }}
+                      >
+                        <Text style={styles.calloutButtonText}>Make Offer</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.calloutButton, { backgroundColor: '#2563eb' }]}
+                        onPress={() => addToBulkCart(listing)}
+                      >
+                        <Text style={styles.calloutButtonText}>Add to Bulk</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </Callout>
+              </Marker>
+            );
+          })}
+        </MapView>
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
@@ -348,6 +473,31 @@ export default function RetailerDashboard() {
           onChangeText={setLocationFilter}
         />
         
+        <View style={styles.priceRangeContainer}>
+          <TextInput
+            style={[styles.searchInput, { flex: 1, marginRight: 8 }]}
+            placeholder="Min Price (₹/quintal)"
+            value={priceRangeMin}
+            onChangeText={setPriceRangeMin}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={[styles.searchInput, { flex: 1 }]}
+            placeholder="Max Price (₹/quintal)"
+            value={priceRangeMax}
+            onChangeText={setPriceRangeMax}
+            keyboardType="numeric"
+          />
+        </View>
+        
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Location radius (km)"
+          value={locationRadius}
+          onChangeText={setLocationRadius}
+          keyboardType="numeric"
+        />
+        
         <Text className="text-sm text-gray-600 mb-2 mt-3">Quick Filters:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TouchableOpacity 
@@ -371,6 +521,42 @@ export default function RetailerDashboard() {
           ))}
         </ScrollView>
       </View>
+
+      {/* Browse Marketplace Button */}
+      <View style={styles.browseContainer}>
+        <TouchableOpacity
+          style={styles.browseButton}
+          onPress={() => {
+            // Load all listings and show them
+            loadInitialData();
+            Alert.alert('Browse Marketplace', 'Showing all available farmer listings in your area');
+          }}
+        >
+          <MaterialCommunityIcons name="storefront" size={24} color="white" />
+          <Text style={styles.browseButtonText}>Browse Marketplace</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bulk Cart Summary */}
+      {bulkCart.length > 0 && (
+        <View style={styles.bulkCartSummary}>
+          <View style={styles.bulkCartHeader}>
+            <Text style={styles.bulkCartTitle}>📦 Bulk Cart Summary</Text>
+            <TouchableOpacity
+              style={styles.viewCartButton}
+              onPress={() => setShowBulkCart(true)}
+            >
+              <Text style={styles.viewCartButtonText}>View Cart ({bulkCart.length})</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.bulkCartText}>
+            Total: {calculateBulkQuantity().toFixed(1)}kg from {bulkCart.length} farmers
+          </Text>
+          <Text style={styles.bulkCartText}>
+            Avg Price: ₹{calculateBulkAvgPrice().toFixed(2)}/kg | Total: ₹{calculateBulkTotal().toFixed(2)}
+          </Text>
+        </View>
+      )}
 
       {/* View Toggle */}
       <View style={styles.viewToggle}>
@@ -417,99 +603,7 @@ export default function RetailerDashboard() {
         </View>
 
         {showMapView ? (
-          // Interactive Map View
-          <View className="bg-white rounded-xl mb-4 shadow-sm overflow-hidden">
-            <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
-              <Text className="text-lg font-bold text-green-800">📍 Farmer Locations</Text>
-              <View className="flex-row space-x-2">
-                <TouchableOpacity className="bg-green-100 px-3 py-1 rounded-full">
-                  <Text className="text-green-700 font-medium text-sm">Filter by Crop</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="bg-blue-100 px-3 py-1 rounded-full">
-                  <Text className="text-blue-700 font-medium text-sm">Distance</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            {/* Map Container */}
-            <View style={{height: 400}} className="bg-gray-100">
-              <View className="flex-1 justify-center items-center">
-                <MaterialCommunityIcons name="map-outline" size={64} color="#6b7280" />
-                <Text className="text-gray-600 text-lg font-semibold mt-4">Interactive Map</Text>
-                <Text className="text-gray-500 text-center mt-2 px-4">
-                  Farmer locations with crop listings
-                </Text>
-              </View>
-            </View>
-            
-            {/* Map Legend and Stats */}
-            <View className="p-4">
-              <View className="flex-row space-x-2 mb-4">
-                <View className="flex-1 bg-green-100 rounded-lg p-3 items-center">
-                  <MaterialCommunityIcons name="account-group" size={24} color="#059669" />
-                  <Text className="text-green-700 font-medium text-sm mt-1">Active Farmers</Text>
-                  <Text className="text-green-600 font-bold">{filteredListings.length}</Text>
-                </View>
-                <View className="flex-1 bg-blue-100 rounded-lg p-3 items-center">
-                  <MaterialCommunityIcons name="package-variant" size={24} color="#2563EB" />
-                  <Text className="text-blue-700 font-medium text-sm mt-1">Crop Types</Text>
-                  <Text className="text-blue-600 font-bold">{new Set(filteredListings.map(l => l.cropType)).size}</Text>
-                </View>
-                <View className="flex-1 bg-orange-100 rounded-lg p-3 items-center">
-                  <MaterialCommunityIcons name="map-marker-distance" size={24} color="#EA580C" />
-                  <Text className="text-orange-700 font-medium text-sm mt-1">Avg Distance</Text>
-                  <Text className="text-orange-600 font-bold">2.5 km</Text>
-                </View>
-              </View>
-              
-              {/* Nearby Farmers List */}
-              <View>
-                <Text className="text-md font-semibold text-gray-800 mb-3">🚜 Nearby Farmers:</Text>
-                {filteredListings.slice(0, 3).map((listing) => {
-                  const matchingMarketData = marketData.find(item => 
-                    item.crop.toLowerCase() === listing.cropType.toLowerCase()
-                  );
-                  return (
-                    <View key={listing.id} className="flex-row justify-between items-center py-3 px-3 bg-gray-50 rounded-lg mb-2">
-                      <View className="flex-1">
-                        <View className="flex-row items-center mb-1">
-                          <MaterialCommunityIcons name="account" size={16} color="#059669" />
-                          <Text className="font-semibold text-gray-800 ml-2">{listing.farmerId}</Text>
-                        </View>
-                        <View className="flex-row items-center mb-1">
-                          <MaterialCommunityIcons name="sprout" size={14} color="#6B7280" />
-                          <Text className="text-gray-600 text-sm ml-1">{listing.cropType} - {listing.quantityKg} kg</Text>
-                        </View>
-                        <View className="flex-row items-center">
-                          <MaterialCommunityIcons name="map-marker" size={14} color="#6B7280" />
-                          <Text className="text-gray-600 text-sm ml-1">{listing.location}</Text>
-                        </View>
-                      </View>
-                      <View className="items-end">
-                        <Text className="text-lg font-bold text-green-600">₹{listing.expectedPrice}/q</Text>
-                        <TouchableOpacity 
-                          className="bg-green-600 px-3 py-1 rounded-full mt-1"
-                          onPress={() => handleMakeOffer(listing)}
-                        >
-                          <Text className="text-white text-xs font-medium">Make Offer</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-                {filteredListings.length > 3 && (
-                  <TouchableOpacity 
-                      className="bg-blue-600 rounded-lg p-3 mt-2"
-                      onPress={() => setShowMapView(false)}
-                    >
-                      <Text className="text-white text-center font-semibold">
-                        View All {filteredListings.length} Farmers in List
-                      </Text>
-                    </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          </View>
+          renderMapView()
         ) : (
           // List View
           filteredListings.map((listing) => {
@@ -796,6 +890,10 @@ const styles = StyleSheet.create({
     elevation: 3,
     boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)',
   },
+  priceRangeContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
   viewToggle: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -855,5 +953,113 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     elevation: 4,
     boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)',
+  },
+  mapContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 6,
+    boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
+  },
+  map: {
+    height: 400,
+    width: '100%',
+  },
+  calloutContainer: {
+    padding: 10,
+    minWidth: 200,
+  },
+  calloutTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  calloutText: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  calloutButtons: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 5,
+  },
+  calloutButton: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flex: 1,
+  },
+  calloutButtonText: {
+    color: 'white',
+    fontSize: 10,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  browseContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  browseButton: {
+    backgroundColor: '#059669',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  browseButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  bulkCartSummary: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563eb',
+  },
+  bulkCartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bulkCartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  viewCartButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  viewCartButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bulkCartText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 2,
   },
 });

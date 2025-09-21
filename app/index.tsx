@@ -73,5 +73,12 @@ export default function IndexPage() {
   }
 
   console.log('✅ IndexPage: User and profile complete, redirecting to tabs');
+  
+  // Redirect farmers directly to farmer dashboard
+  if (user?.role?.toLowerCase() === 'farmer') {
+    console.log('🌾 IndexPage: Farmer detected, redirecting to farmer dashboard');
+    return <Redirect href="/(tabs)/farmer-dashboard" />;
+  }
+  
   return <Redirect href="/(tabs)" />;
 }

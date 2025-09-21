@@ -38,7 +38,7 @@ export default function DashboardScreen() {
           नमस्ते! {farmerProfile?.name || 'किसान जी'}
         </Text>
         <Text className="text-white text-center opacity-90 mt-1">
-          {user?.phone}
+          {user?.phoneNumber}
         </Text>
         {farmerProfile?.village && (
           <Text className="text-white text-center mt-1">

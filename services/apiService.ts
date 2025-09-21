@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'http://10.12.139.117:3000'; // Marketplace Backend URL
+const BASE_URL = process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com'; // Marketplace Backend URL
 
 interface CropListing {
   id: string;

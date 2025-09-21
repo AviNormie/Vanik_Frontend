@@ -14,6 +14,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { WalletService } from '../../services/walletService';
 import { apiService } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
+import FloatingAIAssistant from '../../components/shared/FloatingAIAssistant';
 // Chart functionality will be added later when victory-native is installed
 
 const { width } = Dimensions.get('window');
@@ -472,6 +473,7 @@ export default function FarmerDashboard() {
       </ScrollView>
       
       {renderAddListingModal()}
+      <FloatingAIAssistant />
     </View>
   );
 }

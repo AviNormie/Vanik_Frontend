@@ -187,10 +187,11 @@ export default function FloatingAIAssistant() {
       console.log('🤖 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/text`);
       console.log('🤖 AI Assistant: Request payload:', { text: userMessage });
       
-     const response = await axios.post(`${API_BASE_URL}/orchestrator/text`, {
+      const response = await axios.post(`${API_BASE_URL}/orchestrator/text`, {
           text: userMessage,
           userId: user?.id || 'anonymous-user',
           returnAudio: true,
+          language: 'ml', // Always use Malayalam for TTS
         }, {
         headers: {
           'Content-Type': 'application/json',
@@ -208,49 +209,51 @@ export default function FloatingAIAssistant() {
       addMessage('assistant', responseText);
       
       // Handle audio response if available
-      if (response.data?.audio && response.data.audio.data) {
+      if (response.data?.audio) {
         console.log('🤖 AI Assistant: Audio data received in text response');
         try {
-          // Convert audio buffer to base64 using a more robust method
-          const audioData = response.data.audio.data;
+          const audioData = response.data.audio;
           
-          // Use a more reliable base64 conversion
-          let base64String = '';
-          const chunkSize = 1024;
-          
-          for (let i = 0; i < audioData.length; i += chunkSize) {
-            const chunk = audioData.slice(i, i + chunkSize);
-            // Convert chunk to string using a safer method
-            let chunkString = '';
-            for (let j = 0; j < chunk.length; j++) {
-              chunkString += String.fromCharCode(chunk[j]);
-            }
-            base64String += btoa(chunkString);
+          if (audioData && audioData.length > 0) {
+            console.log('🤖 AI Assistant: Creating audio object from base64 data');
+            
+            // Create audio object directly from base64 data
+            const { sound } = await Audio.Sound.createAsync(
+              { uri: `data:audio/mp3;base64,${audioData}` },
+              { 
+                shouldPlay: true,
+                isLooping: false,
+                volume: 1.0,
+                progressUpdateIntervalMillis: 100,
+              },
+              (status) => {
+                console.log('🤖 AI Assistant: Playback status:', status);
+              }
+            );
+            
+            // Handle playback completion
+            sound.setOnPlaybackStatusUpdate(async (status) => {
+              if (status.isLoaded) {
+                if (status.didJustFinish) {
+                  console.log('🤖 AI Assistant: Audio playback completed');
+                  await sound.unloadAsync();
+                }
+              } else if (status.error) {
+                console.error('🤖 AI Assistant: Playback error:', status.error);
+              }
+            });
+            
+            addMessage('assistant', '🔊 Audio response playing...');
+          } else {
+            console.log('🤖 AI Assistant: Empty audio data received');
           }
-          
-          const textAudioUri = `data:audio/mpeg;base64,${base64String}`;
-          
-          console.log('🤖 AI Assistant: Playing audio from text response data URI');
-          console.log('🤖 AI Assistant: Base64 length:', base64String.length);
-          
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: textAudioUri },
-            { 
-              shouldPlay: true,
-              isLooping: false,
-              volume: 1.0
-            }
-          );
-          
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              sound.unloadAsync();
-            }
-          });
-          
-          addMessage('assistant', '🔊 Audio response played');
         } catch (audioError: any) {
-          console.error('🤖 AI Assistant: Error playing audio from text response:', audioError);
+          console.error('🤖 AI Assistant: Error handling audio:', audioError);
+          console.error('🤖 AI Assistant: Error details:', {
+            name: audioError.name,
+            message: audioError.message,
+            code: audioError.code,
+          });
           addMessage('assistant', 'Audio response received but could not be played.');
         }
       }
@@ -377,6 +380,7 @@ export default function FloatingAIAssistant() {
         name: 'audio.m4a',
       } as any);
       formData.append('userId', user?.id || 'anonymous-user');
+      formData.append('language', 'ml'); // Always use Malayalam for TTS
 
       console.log('🎤 AI Assistant: FormData prepared, sending to API...');
       console.log('🎤 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/process`);
@@ -393,65 +397,45 @@ export default function FloatingAIAssistant() {
       console.log('🎤 AI Assistant: Audio API response headers:', response.headers);
       console.log('🎤 AI Assistant: Received binary audio data, size:', response.data.byteLength);
       
-      // Convert ArrayBuffer to base64 using a more robust method
+      // Convert ArrayBuffer to base64
       console.log('🎤 AI Assistant: Converting audio data to base64');
       
       const uint8Array = new Uint8Array(response.data);
-      
-      // Use a more robust base64 conversion that handles binary data properly
       let base64String = '';
-      const chunkSize = 1024;
+      for (let i = 0; i < uint8Array.length; i++) {
+        base64String += String.fromCharCode(uint8Array[i]);
+      }
+      const audioData = btoa(base64String);
       
-      for (let i = 0; i < uint8Array.length; i += chunkSize) {
-        const chunk = uint8Array.slice(i, i + chunkSize);
-        // Convert chunk to string using a safer method
-        let chunkString = '';
-        for (let j = 0; j < chunk.length; j++) {
-          chunkString += String.fromCharCode(chunk[j]);
+      console.log('🎤 AI Assistant: Creating audio object from base64 data');
+      
+      // Create audio object directly from base64 data
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mp3;base64,${audioData}` },
+        { 
+          shouldPlay: true,
+          isLooping: false,
+          volume: 1.0,
+          progressUpdateIntervalMillis: 100,
+        },
+        (status) => {
+          console.log('🎤 AI Assistant: Playback status:', status);
         }
-        base64String += btoa(chunkString);
-      }
+      );
       
-      const audioDataUri = `data:audio/mpeg;base64,${base64String}`;
-      
-      console.log('🎤 AI Assistant: Base64 conversion completed, length:', base64String.length);
-      console.log('🎤 AI Assistant: Audio URI length:', audioDataUri.length);
-      
-      // Play the audio response from data URI
-      try {
-        console.log('🎤 AI Assistant: Attempting to play audio from data URI');
-        
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: audioDataUri },
-          { 
-            shouldPlay: true,
-            isLooping: false,
-            volume: 1.0
+      // Handle playback completion
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            console.log('🎤 AI Assistant: Audio playback completed');
+            await sound.unloadAsync();
           }
-        );
-        
-        console.log('🎤 AI Assistant: Audio sound created successfully');
-        
-        // Clean up sound after playback
-        sound.setOnPlaybackStatusUpdate((status) => {
-          console.log('🎤 AI Assistant: Playback status update:', status);
-          if (status.isLoaded && status.didJustFinish) {
-            console.log('🎤 AI Assistant: Audio playback finished, cleaning up');
-            sound.unloadAsync();
-          }
-        });
-        
-        addMessage('assistant', '🔊 Audio response played');
-        console.log('🎤 AI Assistant: Audio response played successfully');
-      } catch (audioError: any) {
-        console.error('🎤 AI Assistant: Error playing audio:', audioError);
-        console.error('🎤 AI Assistant: Audio error details:', {
-          name: audioError.name,
-          message: audioError.message,
-          code: audioError.code
-        });
-        addMessage('assistant', 'Audio response received but could not be played.');
-      }
+        } else if (status.error) {
+          console.error('🎤 AI Assistant: Playback error:', status.error);
+        }
+      });
+      
+      addMessage('assistant', '🔊 Audio response playing...');
       console.log('🎤 AI Assistant: Audio query completed successfully');
     } catch (error) {
       console.error('🎤 AI Assistant: Audio query error occurred:', error);

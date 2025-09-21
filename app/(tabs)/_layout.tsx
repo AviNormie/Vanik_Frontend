@@ -73,7 +73,6 @@ export default function TabsLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
       <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#16a34a',
@@ -218,7 +217,5 @@ export default function TabsLayout() {
         </>
       )}
       </Tabs>
-      <FloatingAIAssistant />
-    </View>
   );
 }

@@ -5,6 +5,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useEffect, useRef } from 'react';
 import { logAllAsyncStorage } from '../../utils/asyncStorageLogger';
+import FloatingAIAssistant from '../../components/shared/FloatingAIAssistant';
 
 export default function TabsLayout() {
   const { user, profile, isLoading } = useAuth();
@@ -72,7 +73,8 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs
+    <View style={{ flex: 1 }}>
+      <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#16a34a',
         tabBarInactiveTintColor: '#6b7280',
@@ -98,6 +100,7 @@ export default function TabsLayout() {
               ),
             }}
           />
+
           {/* Hide wallet tab for farmers */}
           <Tabs.Screen
             name="wallet"
@@ -186,6 +189,7 @@ export default function TabsLayout() {
               ),
             }}
           />
+
           {/* Hide farmer-specific tabs for retailers */}
           <Tabs.Screen
             name="farmer-dashboard"
@@ -213,6 +217,8 @@ export default function TabsLayout() {
           />
         </>
       )}
-    </Tabs>
+      </Tabs>
+      <FloatingAIAssistant />
+    </View>
   );
 }

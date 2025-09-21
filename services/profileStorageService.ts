@@ -53,7 +53,7 @@ class ProfileStorageService {
     if (Platform.OS === 'web') {
       return process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com';
     } else {
-      return process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'http://localhost:3000';
+      return process.env.EXPO_PUBLIC_AUTH_BACKEND_URL || 'https://auth-service-sih.onrender.com';
     }
   }
 

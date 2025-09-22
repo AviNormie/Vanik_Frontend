@@ -1,14 +1,17 @@
 // app/(tabs)/_layout.tsx
 import { Tabs, Redirect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { LanguageProvider, useLanguage } from '../../context/LanguageContext';
 import { View, ActivityIndicator, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo, useEffect, useRef } from 'react';
 import FloatingAIAssistant from '../../components/shared/FloatingAIAssistant';
+import LanguageSelector from '../../components/shared/LanguageSelector';
 
-export default function TabsLayout() {
+function TabsContent() {
   const { user, profile, isLoading, logout } = useAuth();
+  const { t } = useLanguage();
 
   // Early returns MUST come before any hooks to follow Rules of Hooks
   if (isLoading) {
@@ -57,22 +60,18 @@ export default function TabsLayout() {
   
   // Memoize role calculation to prevent unnecessary re-renders
   const isFarmer = useMemo(() => {
-    // Check multiple possible role formats
+    // Check both user.role and profile.role for compatibility
     const userRole = user?.role?.toLowerCase();
     const profileRole = profile?.role?.toLowerCase();
     
-    const result = userRole === 'farmer' || profileRole === 'farmer';
+    // Log for debugging
+    console.log('🔍 TabsLayout: Role check - user.role:', userRole, 'profile.role:', profileRole);
     
-    // Enhanced logging for debugging
-    console.log('🎭 TabsLayout: User object:', user);
-    console.log('🎭 TabsLayout: User role:', user?.role);
-    console.log('🎭 TabsLayout: Profile role:', profile?.role);
-    console.log('🎭 TabsLayout: Is farmer result:', result);
-    
-    return result;
+    // Return true if either indicates farmer
+    return userRole === 'farmer' || profileRole === 'farmer';
   }, [user?.role, profile?.role]);
 
-  // Enhanced glass morphism tab bar style
+  // Common tab bar styling
   const tabBarStyle = {
     position: 'absolute' as const,
     bottom: 0,
@@ -119,12 +118,15 @@ export default function TabsLayout() {
       />
     ),
     headerRight: () => (
-      <TouchableOpacity
-        onPress={() => logout()}
-        style={styles.logoutButton}
-      >
-        <MaterialCommunityIcons name="logout" size={20} color="white" />
-      </TouchableOpacity>
+      <View style={styles.headerRightContainer}>
+        <LanguageSelector />
+        <TouchableOpacity
+          onPress={() => logout()}
+          style={styles.logoutButton}
+        >
+          <MaterialCommunityIcons name="logout" size={20} color="white" />
+        </TouchableOpacity>
+      </View>
     ),
   };
 
@@ -132,13 +134,94 @@ export default function TabsLayout() {
   if (isFarmer) {
     // FARMER LAYOUT: Home, Sell Crops, AI (center), Weather, Profile
     return (
+      <LanguageProvider>
+        <View style={{ flex: 1 }}>
+          <Tabs screenOptions={screenOptions}>
+            <Tabs.Screen
+              name="index"
+              options={{
+                title: t('home'),
+                headerTitle: `🏠 ${t('home')}`,
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="home" size={size} color={color} />
+                ),
+              }}
+            />
+
+            <Tabs.Screen
+              name="farmer-dashboard"
+              options={{
+                title: t('farmingActivities'),
+                headerTitle: `🌾 ${t('farmingActivities')}`,
+                tabBarIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="leaf" size={size} color={color} />
+                ),
+              }}
+            />
+
+            {/* AI Assistant - Center placeholder (invisible) */}
+            <Tabs.Screen
+              name="crop_disease"
+              options={{
+                title: '',
+                headerTitle: `🔬 ${t('cropDisease')}`,
+                tabBarIcon: () => <View style={{ width: 50 }} />, // Invisible placeholder
+                tabBarLabel: () => null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="weather"
+              options={{
+                title: t('weather'),
+                headerTitle: `🌤️ ${t('weather')}`,
+                tabBarIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="weather-cloudy" size={size} color={color} />
+                ),
+              }}
+            />
+
+            <Tabs.Screen
+              name="profile"
+              options={{
+                title: t('profile'),
+                headerTitle: `👤 ${t('profile')}`,
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="person" size={size} color={color} />
+                ),
+              }}
+            />
+
+            {/* Hide other tabs */}
+            <Tabs.Screen name="wallet" options={{ href: null }} />
+            <Tabs.Screen name="retailer-dashboard" options={{ href: null }} />
+            <Tabs.Screen name="settings" options={{ href: null }} />
+            <Tabs.Screen name="bulk-purchase" options={{ href: null }} />
+            <Tabs.Screen name="offers" options={{ href: null }} />
+          </Tabs>
+          
+          {/* Floating AI Assistant */}
+          <FloatingAIAssistant />
+        </View>
+      </LanguageProvider>
+    );
+  }
+
+  // RETAILER LAYOUT: Home, Marketplace, AI (center), Weather, Profile
+  return (
+    <LanguageProvider>
       <View style={{ flex: 1 }}>
-        <Tabs screenOptions={screenOptions}>
+        <Tabs screenOptions={() => ({
+          ...screenOptions,
+          headerTitleStyle: {
+            fontWeight: '700' as const // Using specific font weight value instead of "bold"
+          }
+        })}>
           <Tabs.Screen
             name="index"
             options={{
-              title: 'होम',
-              headerTitle: '🏠 होम / Home',
+              title: t('home'),
+              headerTitle: `🏠 ${t('home')}`,
               tabBarIcon: ({ color, size }) => (
                 <Ionicons name="home" size={size} color={color} />
               ),
@@ -146,12 +229,12 @@ export default function TabsLayout() {
           />
 
           <Tabs.Screen
-            name="farmer-dashboard"
+            name="retailer-dashboard"
             options={{
-              title: 'फसल बेचें',
-              headerTitle: '🌾 फसल बेचें / Sell Crops',
+              title: t('market'),
+              headerTitle: `🛒 ${t('market')}`,
               tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="leaf" size={size} color={color} />
+                <Ionicons name="storefront" size={size} color={color} />
               ),
             }}
           />
@@ -161,7 +244,7 @@ export default function TabsLayout() {
             name="crop_disease"
             options={{
               title: '',
-              headerTitle: '🔬 फसल रोग / Crop Disease',
+              headerTitle: `🔬 ${t('cropDisease')}`,
               tabBarIcon: () => <View style={{ width: 50 }} />, // Invisible placeholder
               tabBarLabel: () => null,
             }}
@@ -170,8 +253,8 @@ export default function TabsLayout() {
           <Tabs.Screen
             name="weather"
             options={{
-              title: 'मौसम',
-              headerTitle: '🌤️ मौसम / Weather',
+              title: t('weather'),
+              headerTitle: `🌤️ ${t('weather')}`,
               tabBarIcon: ({ color, size }) => (
                 <MaterialCommunityIcons name="weather-cloudy" size={size} color={color} />
               ),
@@ -181,8 +264,8 @@ export default function TabsLayout() {
           <Tabs.Screen
             name="profile"
             options={{
-              title: 'प्रोफाइल',
-              headerTitle: '👤 प्रोफाइल / Profile',
+              title: t('profile'),
+              headerTitle: `👤 ${t('profile')}`,
               tabBarIcon: ({ color, size }) => (
                 <Ionicons name="person" size={size} color={color} />
               ),
@@ -191,7 +274,7 @@ export default function TabsLayout() {
 
           {/* Hide other tabs */}
           <Tabs.Screen name="wallet" options={{ href: null }} />
-          <Tabs.Screen name="retailer-dashboard" options={{ href: null }} />
+          <Tabs.Screen name="farmer-dashboard" options={{ href: null }} />
           <Tabs.Screen name="settings" options={{ href: null }} />
           <Tabs.Screen name="bulk-purchase" options={{ href: null }} />
           <Tabs.Screen name="offers" options={{ href: null }} />
@@ -200,90 +283,25 @@ export default function TabsLayout() {
         {/* Floating AI Assistant */}
         <FloatingAIAssistant />
       </View>
-    );
-  }
+    </LanguageProvider>
+  );
+}
 
-  // RETAILER LAYOUT: Home, Marketplace, AI (center), Weather, Profile
+export default function TabsLayout() {
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs screenOptions={() => ({
-        ...screenOptions,
-        headerTitleStyle: {
-          fontWeight: '700' as const // Using specific font weight value instead of "bold"
-        }
-      })}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'होम',
-            headerTitle: '🏠 होम / Home',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="home" size={size} color={color} />
-            ),
-          }}
-        />
-
-        <Tabs.Screen
-          name="retailer-dashboard"
-          options={{
-            title: 'बाजार',
-            headerTitle: '🛒 बाजार / Marketplace',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="storefront" size={size} color={color} />
-            ),
-          }}
-        />
-
-        {/* AI Assistant - Center placeholder (invisible) */}
-        <Tabs.Screen
-          name="crop_disease"
-          options={{
-            title: '',
-            headerTitle: '🔬 फसल रोग / Crop Disease',
-            tabBarIcon: () => <View style={{ width: 50 }} />, // Invisible placeholder
-            tabBarLabel: () => null,
-          }}
-        />
-
-        <Tabs.Screen
-          name="weather"
-          options={{
-            title: 'मौसम',
-            headerTitle: '🌤️ मौसम / Weather',
-            tabBarIcon: ({ color, size }) => (
-              <MaterialCommunityIcons name="weather-cloudy" size={size} color={color} />
-            ),
-          }}
-        />
-
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: 'प्रोफाइल',
-            headerTitle: '👤 प्रोफाइल / Profile',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person" size={size} color={color} />
-            ),
-          }}
-        />
-
-        {/* Hide other tabs */}
-        <Tabs.Screen name="wallet" options={{ href: null }} />
-        <Tabs.Screen name="farmer-dashboard" options={{ href: null }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
-        <Tabs.Screen name="bulk-purchase" options={{ href: null }} />
-        <Tabs.Screen name="offers" options={{ href: null }} />
-      </Tabs>
-      
-      {/* Floating AI Assistant */}
-      <FloatingAIAssistant />
-    </View>
+    <LanguageProvider>
+      <TabsContent />
+    </LanguageProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  logoutButton: {
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: 16,
+  },
+  logoutButton: {
     padding: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 22,

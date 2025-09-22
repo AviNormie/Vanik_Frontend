@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { weatherService, WeatherData } from '../../services/weatherService';
 
 import WelcomeMessage from '../../components/WelcomeMessage';
@@ -27,6 +28,7 @@ const farmerImages = [
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [currentWeather, setCurrentWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -134,10 +136,10 @@ export default function HomeScreen() {
       <ScrollView style={styles.scrollView}>
         {/* Welcome Header */}
         <View style={styles.welcomeHeader}>
-          <Text style={styles.welcomeTextHindi}>{welcomeMsg.hindi}</Text>
-          <Text style={styles.welcomeTextEnglish}>{welcomeMsg.english}</Text>
+          <Text style={styles.welcomeTextHindi}>{t('welcome')}, {getUserName()}!</Text>
+          <Text style={styles.welcomeTextEnglish}>{t('todayFarming')}</Text>
           <Text style={styles.dateText}>
-            {new Date().toLocaleDateString('hi-IN', {
+            {new Date().toLocaleDateString('en-IN', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -148,12 +150,12 @@ export default function HomeScreen() {
 
         {/* Today's Weather */}
         <View style={styles.weatherCard}>
-          <Text style={styles.sectionTitle}>आज का मौसम / Today's Weather</Text>
+          <Text style={styles.sectionTitle}>{t('todayWeather')}</Text>
           
           {weatherLoading ? (
             <View style={styles.weatherLoading}>
               <ActivityIndicator size="small" color="#16a34a" />
-              <Text style={styles.loadingText}>मौसम लोड हो रहा है...</Text>
+              <Text style={styles.loadingText}>{t('loadingWeather')}</Text>
             </View>
           ) : currentWeather ? (
             <View style={styles.weatherContent}>
@@ -180,28 +182,28 @@ export default function HomeScreen() {
                 <View style={styles.weatherStat}>
                   <MaterialCommunityIcons name="water-percent" size={16} color="#6b7280" />
                   <Text style={styles.statText}>{currentWeather.current.humidity}%</Text>
-                  <Text style={styles.statLabel}>नमी</Text>
+                  <Text style={styles.statLabel}>{t('humidity')}</Text>
                 </View>
                 <View style={styles.weatherStat}>
                   <MaterialCommunityIcons name="weather-windy" size={16} color="#6b7280" />
                   <Text style={styles.statText}>{Math.round(currentWeather.current.wind_kph)}</Text>
-                  <Text style={styles.statLabel}>हवा</Text>
+                  <Text style={styles.statLabel}>{t('wind')}</Text>
                 </View>
                 <View style={styles.weatherStat}>
                   <MaterialCommunityIcons name="water" size={16} color="#6b7280" />
                   <Text style={styles.statText}>{currentWeather.current.precip_mm}mm</Text>
-                  <Text style={styles.statLabel}>बारिश</Text>
+                  <Text style={styles.statLabel}>{t('rain')}</Text>
                 </View>
               </View>
             </View>
           ) : (
-            <Text style={styles.errorText}>मौसम की जानकारी उपलब्ध नहीं है</Text>
+            <Text style={styles.errorText}>{t('weatherNotAvailable')}</Text>
           )}
         </View>
 
         {/* Farmer Images Slider */}
         <View style={styles.sliderCard}>
-          <Text style={styles.sectionTitle}>कृषि गतिविधियां / Farming Activities</Text>
+          <Text style={styles.sectionTitle}>{t('farmingActivities')}</Text>
           
           <View style={styles.imageSlider}>
             <ScrollView
@@ -222,10 +224,10 @@ export default function HomeScreen() {
                   />
                   <View style={styles.imageOverlay}>
                     <Text style={styles.imageText}>
-                      {index === 0 && 'खेत की तैयारी / Field Preparation'}
-                      {index === 1 && 'बुआई का समय / Sowing Season'}
-                      {index === 2 && 'फसल की देखभाल / Crop Care'}
-                      {index === 3 && 'कटाई का समय / Harvest Time'}
+                      {index === 0 && t('fieldPreparation')}
+                      {index === 1 && t('sowingSeason')}
+                      {index === 2 && t('cropCare')}
+                      {index === 3 && t('harvestTime')}
                     </Text>
                   </View>
                 </View>
@@ -249,57 +251,46 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActionsCard}>
-          <Text style={styles.sectionTitle}>त्वरित सेवाएं / Quick Services</Text>
+          <Text style={styles.sectionTitle}>{t('quickServices')}</Text>
           
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickAction}>
               <MaterialCommunityIcons name="leaf" size={32} color="#16a34a" />
-              <Text style={styles.quickActionText}>फसल रोग</Text>
-              <Text style={styles.quickActionSubtext}>Crop Disease</Text>
+              <Text style={styles.quickActionText}>{t('cropDisease')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.quickAction}>
               <MaterialCommunityIcons name="weather-cloudy" size={32} color="#3b82f6" />
-              <Text style={styles.quickActionText}>मौसम</Text>
-              <Text style={styles.quickActionSubtext}>Weather</Text>
+              <Text style={styles.quickActionText}>{t('weather')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.quickAction}>
               <MaterialCommunityIcons name="wallet" size={32} color="#f59e0b" />
-              <Text style={styles.quickActionText}>वॉलेट</Text>
-              <Text style={styles.quickActionSubtext}>Wallet</Text>
+              <Text style={styles.quickActionText}>{t('wallet')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.quickAction}>
               <MaterialCommunityIcons name="storefront" size={32} color="#8b5cf6" />
-              <Text style={styles.quickActionText}>बाजार</Text>
-              <Text style={styles.quickActionSubtext}>Market</Text>
+              <Text style={styles.quickActionText}>{t('market')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Tips Section */}
         <View style={styles.tipsCard}>
-          <Text style={styles.sectionTitle}>आज के सुझाव / Today's Tips</Text>
+          <Text style={styles.sectionTitle}>{t('todayTips')}</Text>
           
           <View style={styles.tipItem}>
             <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
             <Text style={styles.tipText}>
-              आज का मौसम सिंचाई के लिए उपयुक्त है। सुबह या शाम के समय पानी दें।
-            </Text>
-          </View>
-          
-          <View style={styles.tipItem}>
-            <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
-            <Text style={styles.tipText}>
-              Today's weather is suitable for irrigation. Water in morning or evening.
+              {t('irrigationTip')}
             </Text>
           </View>
           
           <View style={styles.tipItem}>
             <MaterialCommunityIcons name="chart-line" size={20} color="#16a34a" />
             <Text style={styles.tipText}>
-              गेहूं की कीमत में वृद्धि हो रही है। बेचने का अच्छा समय है।
+              {t('wheatPriceTip')}
             </Text>
           </View>
         </View>
@@ -337,22 +328,39 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   welcomeTextHindi: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
     textAlign: 'center',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    fontFamily: 'System',
+    letterSpacing: 0.5,
   },
   welcomeTextEnglish: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 18,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    marginTop: 4,
+    marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    fontFamily: 'System',
+    letterSpacing: 0.3,
   },
   dateText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    fontFamily: 'System',
+    letterSpacing: 0.2,
   },
   weatherCard: {
     margin: 16,
@@ -369,10 +377,13 @@ const styles = StyleSheet.create({
     backdropFilter: 'blur(20px)',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 12,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontFamily: 'System',
+    letterSpacing: 0.4,
   },
   weatherLoading: {
     flexDirection: 'row',
@@ -397,14 +408,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   temperature: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#16a34a',
+    textAlign: 'center',
+    marginVertical: 8,
+    fontFamily: 'System',
+    letterSpacing: 0.5,
   },
   weatherCondition: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 4,
+    fontSize: 17,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: 'System',
+    letterSpacing: 0.2,
   },
   locationText: {
     fontSize: 14,

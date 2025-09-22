@@ -100,17 +100,8 @@ export default function CompleteProfileScreen() {
            )}
           
           <View style={{ marginTop: 16 }}>
-            <Button
-              title="📦 Log AsyncStorage Data (Debug)"
-              onPress={async () => {
-                console.log('📦 Debug: Logging AsyncStorage data...');
-                const { logAllAsyncStorage } = await import('../../utils/asyncStorageLogger');
-                await logAllAsyncStorage();
-              }}
-              variant="secondary"
-            />
             
-            <View style={{ marginTop: 8 }}>
+            <View style={{ marginTop: 2 }}>
               <Button
                 title="🧹 Clear Storage & Logout (Debug)"
                 onPress={async () => {

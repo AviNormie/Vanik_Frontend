@@ -1,28 +1,34 @@
 // app/(auth)/_layout.tsx
-import { Stack, Redirect } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { View, ActivityIndicator } from 'react-native';
+import { Stack } from 'expo-router';
+import React from 'react';
 
 export default function AuthLayout() {
-  const { user, farmerProfile, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
-  }
-
-  // Redirect authenticated users with complete profile
-  if (user && farmerProfile?.name) {
-    return <Redirect href="/(tabs)" />;
-  }
-
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="complete-profile" />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        gestureEnabled: true,
+      }}
+    >
+      <Stack.Screen 
+        name="welcome" 
+        options={{
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen 
+        name="login" 
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen 
+        name="complete-profile" 
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
     </Stack>
   );
 }

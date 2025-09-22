@@ -56,8 +56,8 @@ export default function IndexPage() {
 
   // Redirect based on auth state
   if (!user) {
-    console.log('🔐 IndexPage: No user found, redirecting to login');
-    return <Redirect href="/(auth)/login" />;
+    console.log('🔐 IndexPage: No user found, redirecting to welcome');
+    return <Redirect href="/(auth)/welcome" />;
   }
 
   const profileName = farmerProfile?.farmerProfile?.name || farmerProfile?.retailerProfile?.ownerName;

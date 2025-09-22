@@ -81,7 +81,7 @@ export default function FloatingAIAssistant() {
       isAudio,
     };
     setMessages(prev => [...prev, newMessage]);
-    
+
     // Auto scroll to bottom with improved timing
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -92,17 +92,17 @@ export default function FloatingAIAssistant() {
   const buildContext = async (): Promise<string> => {
     try {
       console.log('🔄 Building context from past 3 chats and user profile');
-      
+
       // Get user profile information
       const profile = await profileStorageService.loadProfile();
       let contextParts: string[] = [];
-      
+
       // Add profile information to context
       if (profile) {
         contextParts.push('=== USER PROFILE ===');
         contextParts.push(`User ID: ${profile.id}`);
         contextParts.push(`Role: ${profile.role}`);
-        
+
         if (profile.role === 'FARMER' && profile.farmerProfile) {
           const farmer = profile.farmerProfile;
           contextParts.push(`Name: ${farmer.name}`);
@@ -125,7 +125,7 @@ export default function FloatingAIAssistant() {
         }
         contextParts.push('');
       }
-      
+
       // Add past 3 chat messages to context
       const recentMessages = messages.slice(-6); // Get last 6 messages (3 pairs of user-assistant)
       if (recentMessages.length > 0) {
@@ -136,30 +136,30 @@ export default function FloatingAIAssistant() {
         });
         contextParts.push('');
       }
-      
+
       const context = contextParts.join('\n');
       console.log('✅ Context built successfully:', {
         profileIncluded: !!profile,
         messagesIncluded: recentMessages.length,
         contextLength: context.length
       });
-      
+
       return context;
-     } catch (error) {
-       console.error('❌ Error building context:', error);
-       return '';
-     }
-   };
+    } catch (error) {
+      console.error('❌ Error building context:', error);
+      return '';
+    }
+  };
 
   // Replay audio function
   const replayAudio = async (audioData: string, messageId: string) => {
     try {
       setCurrentlyPlaying(messageId);
       console.log('🔊 Replaying audio for message:', messageId);
-      
+
       const { sound } = await Audio.Sound.createAsync(
         { uri: `data:audio/mp3;base64,${audioData}` },
-        { 
+        {
           shouldPlay: true,
           isLooping: false,
           volume: 1.0,
@@ -169,7 +169,7 @@ export default function FloatingAIAssistant() {
           console.log('🔊 Replay status:', status);
         }
       );
-      
+
       // Handle playback completion
       sound.setOnPlaybackStatusUpdate(async (status) => {
         if (status.isLoaded) {
@@ -223,7 +223,7 @@ export default function FloatingAIAssistant() {
   const startLoadingMessages = () => {
     let messageIndex = 0;
     setLoadingMessage(loadingMessages[0]);
-    
+
     loadingIntervalRef.current = setInterval(() => {
       messageIndex = (messageIndex + 1) % loadingMessages.length;
       setLoadingMessage(loadingMessages[messageIndex]);
@@ -294,7 +294,7 @@ export default function FloatingAIAssistant() {
     console.log('🤖 AI Assistant: Starting text query process');
     console.log('🤖 AI Assistant: User message:', userMessage);
     console.log('🤖 AI Assistant: API Base URL:', API_BASE_URL);
-    
+
     setInputText('');
     addMessage('user', userMessage);
     setIsLoading(true);
@@ -303,17 +303,17 @@ export default function FloatingAIAssistant() {
     try {
       // Build context from past 3 chats and user profile
       const context = await buildContext();
-      
+
       console.log('🤖 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/text`);
       console.log('🤖 AI Assistant: Request payload:', { text: userMessage, context: context.substring(0, 200) + '...' });
-      
+
       const response = await axios.post(`${API_BASE_URL}/orchestrator/text`, {
-          text: userMessage,
-          userId: user?.id || 'anonymous-user',
-          returnAudio: true,
-          language: selectedLanguage, // Use selected language for TTS
-          context: context, // Include context with past 3 chats and profile info
-        }, {
+        text: userMessage,
+        userId: user?.id || 'anonymous-user',
+        returnAudio: true,
+        language: selectedLanguage, // Use selected language for TTS
+        context: context, // Include context with past 3 chats and profile info
+      }, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -323,25 +323,25 @@ export default function FloatingAIAssistant() {
       console.log('🤖 AI Assistant: Text API response status:', response.status);
       console.log('🤖 AI Assistant: Text API response headers:', response.headers);
       // console.log('🤖 AI Assistant: Text API response data:', response.data);
-      
+
       const responseText = response.data?.text || response.data?.message || 'Sorry, I could not process your request.';
       console.log('🤖 AI Assistant: Extracted response text:', responseText);
-      
+
       addMessage('assistant', responseText);
-      
+
       // Handle audio response if available
       if (response.data?.audio) {
         console.log('🤖 AI Assistant: Audio data received in text response');
         try {
           const audioData = response.data.audio;
-          
+
           if (audioData && audioData.length > 0) {
             console.log('🤖 AI Assistant: Creating audio object from base64 data');
-            
+
             // Create audio object directly from base64 data
             const { sound } = await Audio.Sound.createAsync(
               { uri: `data:audio/mp3;base64,${audioData}` },
-              { 
+              {
                 shouldPlay: true,
                 isLooping: false,
                 volume: 1.0,
@@ -351,7 +351,7 @@ export default function FloatingAIAssistant() {
                 console.log('🤖 AI Assistant: Playback status:', status);
               }
             );
-            
+
             // Handle playback completion
             sound.setOnPlaybackStatusUpdate(async (status) => {
               if (status.isLoaded) {
@@ -363,7 +363,7 @@ export default function FloatingAIAssistant() {
                 console.error('🤖 AI Assistant: Playback error:', status.error);
               }
             });
-            
+
             addMessage('assistant', '🔊 Audio response playing...', audioData, true);
           } else {
             console.log('🤖 AI Assistant: Empty audio data received');
@@ -378,11 +378,11 @@ export default function FloatingAIAssistant() {
           addMessage('assistant', 'Audio response received but could not be played.');
         }
       }
-      
+
       console.log('🤖 AI Assistant: Text query completed successfully');
     } catch (error) {
       console.error('🤖 AI Assistant: Text query error occurred:', error);
-      
+
       if (axios.isAxiosError(error)) {
         console.error('🤖 AI Assistant: Axios error details:', {
           message: error.message,
@@ -391,14 +391,14 @@ export default function FloatingAIAssistant() {
           statusText: error.response?.statusText,
           data: error.response?.data,
         });
-        
+
         if (error.response?.status === 404) {
-           addMessage('assistant', 'The AI service endpoint was not found. Please check the server configuration.');
-         } else if (error.response?.status === 403) {
-           addMessage('assistant', 'Access denied. Please ensure the AI service is running and properly configured.');
-         } else if (error.response?.status && error.response.status >= 500) {
-           addMessage('assistant', 'The AI service is currently unavailable. Please try again later.');
-         } else if (error.code === 'ECONNABORTED') {
+          addMessage('assistant', 'The AI service endpoint was not found. Please check the server configuration.');
+        } else if (error.response?.status === 403) {
+          addMessage('assistant', 'Access denied. Please ensure the AI service is running and properly configured.');
+        } else if (error.response?.status && error.response.status >= 500) {
+          addMessage('assistant', 'The AI service is currently unavailable. Please try again later.');
+        } else if (error.code === 'ECONNABORTED') {
           addMessage('assistant', 'Request timed out. Please check your internet connection and try again.');
         } else if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
           addMessage('assistant', 'Cannot connect to AI service. Please check your internet connection and try again.');
@@ -422,7 +422,7 @@ export default function FloatingAIAssistant() {
       console.log('🎤 AI Assistant: Starting audio recording process');
       console.log('🎤 AI Assistant: Requesting audio permissions...');
       const permission = await Audio.requestPermissionsAsync();
-      
+
       console.log('🎤 AI Assistant: Permission status:', permission.status);
       if (permission.status !== 'granted') {
         console.log('🎤 AI Assistant: Audio permission denied');
@@ -462,7 +462,7 @@ export default function FloatingAIAssistant() {
           bitsPerSecond: 128000,
         },
       });
-      
+
       setRecording(recording);
       setIsRecording(true);
       console.log('🎤 AI Assistant: Recording started successfully');
@@ -483,10 +483,10 @@ export default function FloatingAIAssistant() {
       console.log('🎤 AI Assistant: Stopping recording...');
       setIsRecording(false);
       await recording.stopAndUnloadAsync();
-      
+
       const uri = recording.getURI();
       console.log('🎤 AI Assistant: Recording saved to:', uri);
-      
+
       if (uri) {
         console.log('🎤 AI Assistant: Sending audio query with URI:', uri);
         await sendAudioQuery(uri);
@@ -494,7 +494,7 @@ export default function FloatingAIAssistant() {
         console.error('🎤 AI Assistant: No URI received from recording');
         Alert.alert('Error', 'Failed to get recording file. Please try again.');
       }
-      
+
       setRecording(null);
       console.log('🎤 AI Assistant: Recording cleanup completed');
     } catch (error) {
@@ -508,17 +508,17 @@ export default function FloatingAIAssistant() {
     console.log('🎤 AI Assistant: Starting audio query process');
     console.log('🎤 AI Assistant: Audio URI:', audioUri);
     console.log('🎤 AI Assistant: API Base URL:', API_BASE_URL);
-    
+
     setIsLoading(true);
     startLoadingMessages();
     addMessage('user', '🎤 Voice message');
 
     try {
       console.log('🎤 AI Assistant: Preparing FormData for audio upload');
-      
+
       // Build context from past 3 chats and user profile
       const context = await buildContext();
-      
+
       const formData = new FormData();
       formData.append('audio', {
         uri: audioUri,
@@ -532,7 +532,7 @@ export default function FloatingAIAssistant() {
       console.log('🎤 AI Assistant: FormData prepared, sending to API...');
       console.log('🎤 AI Assistant: Request URL:', `${API_BASE_URL}/orchestrator/process`);
       console.log('🎤 AI Assistant: Using local IP for backend:', API_BASE_URL);
-      
+
       const response = await axios.post(`${API_BASE_URL}/orchestrator/process?returnAudio=true`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -544,23 +544,23 @@ export default function FloatingAIAssistant() {
       console.log('🎤 AI Assistant: Audio API response status:', response.status);
       console.log('🎤 AI Assistant: Audio API response headers:', response.headers);
       console.log('🎤 AI Assistant: Received binary audio data, size:', response.data.byteLength);
-      
+
       // Convert ArrayBuffer to base64
       console.log('🎤 AI Assistant: Converting audio data to base64');
-      
+
       const uint8Array = new Uint8Array(response.data);
       let base64String = '';
       for (let i = 0; i < uint8Array.length; i++) {
         base64String += String.fromCharCode(uint8Array[i]);
       }
       const audioData = btoa(base64String);
-      
+
       console.log('🎤 AI Assistant: Creating audio object from base64 data');
-      
+
       // Create audio object directly from base64 data
       const { sound } = await Audio.Sound.createAsync(
         { uri: `data:audio/mp3;base64,${audioData}` },
-        { 
+        {
           shouldPlay: true,
           isLooping: false,
           volume: 1.0,
@@ -570,7 +570,7 @@ export default function FloatingAIAssistant() {
           console.log('🎤 AI Assistant: Playback status:', status);
         }
       );
-      
+
       // Handle playback completion
       sound.setOnPlaybackStatusUpdate(async (status) => {
         if (status.isLoaded) {
@@ -582,12 +582,12 @@ export default function FloatingAIAssistant() {
           console.error('🎤 AI Assistant: Playback error:', status.error);
         }
       });
-      
+
       addMessage('assistant', '🔊 Audio response playing...', audioData, true);
       console.log('🎤 AI Assistant: Audio query completed successfully');
     } catch (error) {
       console.error('🎤 AI Assistant: Audio query error occurred:', error);
-      
+
       if (axios.isAxiosError(error)) {
         console.error('🎤 AI Assistant: Axios error details:', {
           message: error.message,
@@ -596,7 +596,7 @@ export default function FloatingAIAssistant() {
           statusText: error.response?.statusText,
           data: error.response?.data,
         });
-        
+
         if (error.response?.status === 404) {
           addMessage('assistant', 'The audio processing endpoint was not found. Please check the server configuration.');
         } else if (error.response?.status === 403) {
@@ -623,12 +623,19 @@ export default function FloatingAIAssistant() {
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* Floating AI Button - Positioned for Tab Bar Center */}
       <TouchableOpacity
         onPress={openModal}
         style={styles.floatingButton}
+        activeOpacity={0.8}
       >
-        <Ionicons name="chatbubble-ellipses" size={28} color="white" />
+        <View style={styles.buttonGlow} />
+        <View style={styles.buttonInner}>
+          <Ionicons name="chatbubble-ellipses" size={24} color="white" />
+        </View>
+        <View style={styles.aiIndicator}>
+          <Text style={styles.aiText}>AI</Text>
+        </View>
       </TouchableOpacity>
 
       {/* Modal */}
@@ -638,21 +645,20 @@ export default function FloatingAIAssistant() {
         animationType="none"
         onRequestClose={closeModal}
       >
-        <Animated.View 
-          className="flex-1"
-          style={{ opacity: fadeAnim }}
+        <Animated.View
+          style={[styles.modalOverlay, { opacity: fadeAnim }]}
         >
-          <BlurView intensity={20} className="flex-1">
-            <TouchableOpacity 
-              className="flex-1" 
-              activeOpacity={1} 
+          <BlurView intensity={80} style={styles.blurContainer} tint="dark">
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
               onPress={closeModal}
             >
-              <KeyboardAvoidingView 
+              <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1 justify-end"
+                style={styles.keyboardView}
               >
-                <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+                <TouchableOpacity activeOpacity={1} onPress={() => { }}>
                   <Animated.View
                     style={[
                       styles.modalContainer,
@@ -679,7 +685,7 @@ export default function FloatingAIAssistant() {
                           <Text style={styles.languageLabel}>
                             {languageOptions.find(lang => lang.code === selectedLanguage)?.flag} {languageOptions.find(lang => lang.code === selectedLanguage)?.name}
                           </Text>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.languageButton}
                             onPress={() => {
                               const currentIndex = languageOptions.findIndex(lang => lang.code === selectedLanguage);
@@ -697,7 +703,7 @@ export default function FloatingAIAssistant() {
                     </View>
 
                     {/* Messages */}
-                    <ScrollView 
+                    <ScrollView
                       ref={scrollViewRef}
                       style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 8 }}
                       showsVerticalScrollIndicator={false}
@@ -734,7 +740,7 @@ export default function FloatingAIAssistant() {
                           </View>
                         </View>
                       )}
-                      
+
                       {messages.map((message) => (
                         <View
                           key={message.id}
@@ -766,10 +772,10 @@ export default function FloatingAIAssistant() {
                                 onPress={() => replayAudio(message.audioData!, message.id)}
                                 disabled={currentlyPlaying === message.id}
                               >
-                                <Ionicons 
-                                  name={currentlyPlaying === message.id ? "stop" : "play"} 
-                                  size={16} 
-                                  color="white" 
+                                <Ionicons
+                                  name={currentlyPlaying === message.id ? "stop" : "play"}
+                                  size={16}
+                                  color="white"
                                 />
                                 <Text style={styles.replayButtonText}>
                                   {currentlyPlaying === message.id ? "Playing..." : "Replay"}
@@ -782,7 +788,7 @@ export default function FloatingAIAssistant() {
                           </Text>
                         </View>
                       ))}
-                      
+
                       {isLoading && (
                         <View style={styles.assistantMessageContainer}>
                           <View style={[styles.messageBubble, styles.assistantMessageBubble, styles.loadingBubble]}>
@@ -808,7 +814,7 @@ export default function FloatingAIAssistant() {
                             maxLength={500}
                             editable={!isLoading}
                           />
-                          
+
                           {/* Send Button - Inside text input */}
                           {inputText.trim() && (
                             <TouchableOpacity
@@ -819,15 +825,15 @@ export default function FloatingAIAssistant() {
                                 isLoading && styles.disabledButton
                               ]}
                             >
-                              <Ionicons 
-                                name="send" 
-                                size={18} 
-                                color="white" 
+                              <Ionicons
+                                name="send"
+                                size={18}
+                                color="white"
                               />
                             </TouchableOpacity>
                           )}
                         </View>
-                        
+
                         {/* Voice Button */}
                         <TouchableOpacity
                           onPress={isRecording ? stopRecording : startRecording}
@@ -838,14 +844,14 @@ export default function FloatingAIAssistant() {
                             isLoading && styles.disabledButton
                           ]}
                         >
-                          <Ionicons 
-                            name={isRecording ? 'stop' : 'mic'} 
-                            size={22} 
-                            color="white" 
+                          <Ionicons
+                            name={isRecording ? 'stop' : 'mic'}
+                            size={22}
+                            color="white"
                           />
                         </TouchableOpacity>
                       </View>
-                      
+
                       {/* Recording Indicator */}
                       {isRecording && (
                         <View style={styles.recordingIndicator}>
@@ -853,22 +859,22 @@ export default function FloatingAIAssistant() {
                           <Text style={styles.recordingText}>Recording... Tap stop when done</Text>
                         </View>
                       )}
-                      
+
                       {/* Quick Actions */}
                       <View style={styles.quickActions}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.quickActionButton}
                           onPress={() => setInputText('What crops should I plant this season?')}
                         >
                           <Text style={styles.quickActionText}>🌱 Crop advice</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.quickActionButton}
                           onPress={() => setInputText('What is the weather forecast?')}
                         >
                           <Text style={styles.quickActionText}>🌤️ Weather</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           style={styles.quickActionButton}
                           onPress={() => setInputText('Market prices for my crops?')}
                         >
@@ -890,32 +896,99 @@ export default function FloatingAIAssistant() {
 const styles = StyleSheet.create({
   floatingButton: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    backgroundColor: '#16a34a',
-    borderRadius: 32,
+    bottom: 25,
+    left: width / 2 - 35, // Center horizontally
+    width: 70,
+    height: 70,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-     elevation: 8,
-   },
-   modalContainer: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.25)',
+    zIndex: 1000,
+  },
+  buttonGlow: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#16a34a',
+    opacity: 0.3,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  buttonInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(22, 163, 74, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
     elevation: 16,
+  },
+  aiIndicator: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  aiText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+  },
+  blurContainer: {
+    flex: 1,
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 30,
+    backdropFilter: 'blur(20px)',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: 'rgba(229, 231, 235, 0.5)',
+    backdropFilter: 'blur(20px)',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -929,12 +1002,18 @@ const styles = StyleSheet.create({
   languageSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(243, 244, 246, 0.8)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(229, 231, 235, 0.6)',
+    backdropFilter: 'blur(10px)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   languageLabel: {
     fontSize: 12,
@@ -946,13 +1025,20 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   headerIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#16a34a',
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    backgroundColor: 'rgba(22, 163, 74, 0.9)',
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   headerTitle: {
     fontSize: 18,
@@ -967,11 +1053,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   inputContainer: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderTopColor: 'rgba(229, 231, 235, 0.5)',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backdropFilter: 'blur(20px)',
   },
   inputRow: {
     flexDirection: 'row',
@@ -982,13 +1069,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 48,
+    backgroundColor: 'rgba(248, 250, 252, 0.9)',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    minHeight: 52,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    backdropFilter: 'blur(10px)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   textInput: {
     flex: 1,
@@ -997,28 +1090,40 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#16a34a',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    backgroundColor: 'rgba(22, 163, 74, 0.9)',
+    borderRadius: 22,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   voiceButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   micButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: 'rgba(59, 130, 246, 0.9)',
   },
   recordingButton: {
-    backgroundColor: '#dc2626',
+    backgroundColor: 'rgba(220, 38, 38, 0.9)',
   },
   disabledButton: {
     opacity: 0.5,
@@ -1054,13 +1159,19 @@ const styles = StyleSheet.create({
   },
   quickActionButton: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    backgroundColor: 'rgba(248, 250, 252, 0.9)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(226, 232, 240, 0.6)',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    backdropFilter: 'blur(10px)',
   },
   quickActionText: {
     fontSize: 12,
@@ -1078,19 +1189,27 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '80%',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-    elevation: 2,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   userMessageBubble: {
-    backgroundColor: '#16a34a',
-    borderBottomRightRadius: 6,
+    backgroundColor: 'rgba(22, 163, 74, 0.9)',
+    borderBottomRightRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   assistantMessageBubble: {
-    backgroundColor: '#f3f4f6',
-    borderBottomLeftRadius: 6,
+    backgroundColor: 'rgba(248, 250, 252, 0.95)',
+    borderBottomLeftRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    backdropFilter: 'blur(10px)',
   },
   messageText: {
     fontSize: 16,
@@ -1123,15 +1242,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyStateIcon: {
-    width: 80,
-    height: 80,
-    backgroundColor: '#f0fdf4',
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    backgroundColor: 'rgba(240, 253, 244, 0.8)',
+    borderRadius: 45,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#bbf7d0',
+    borderColor: 'rgba(187, 247, 208, 0.6)',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    backdropFilter: 'blur(10px)',
   },
   emptyStateTitle: {
     fontSize: 20,
@@ -1153,12 +1278,18 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: 'rgba(248, 250, 252, 0.8)',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+    backdropFilter: 'blur(10px)',
   },
   featureText: {
     fontSize: 14,

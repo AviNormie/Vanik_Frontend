@@ -49,8 +49,6 @@ dist/
 *.orig.*
 
 # Environment variables
-.env
-.env.*
 !.env.example
 
 # TypeScript
@@ -154,3 +152,4 @@ android/app/release/
 
 expo-env.d.ts
 # @end expo-cli
+config.bat

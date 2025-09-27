@@ -9,7 +9,11 @@ import {
   Dimensions,
   Image,
   ActivityIndicator,
+  ImageBackground,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
+import { Stack } from "expo-router";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -25,6 +29,9 @@ const farmerImages = [
   'https://images.unsplash.com/photo-1592982537447-6f2a6a0c8b6b?w=400&h=200&fit=crop',
   'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400&h=200&fit=crop',
 ];
+
+// Hero background image - you can replace this with your preferred image
+const HERO_BG = 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&h=600&fit=crop';
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
@@ -95,7 +102,7 @@ export default function HomeScreen() {
     if (profile?.retailerProfile?.businessName) {
       return profile.retailerProfile.businessName;
     }
-    return 'उपयोगकर्ता';
+    return 'Jonathan.S';
   };
 
   const getWelcomeMessage = () => {
@@ -129,404 +136,589 @@ export default function HomeScreen() {
     return 'weather-partly-cloudy';
   };
 
+  const mockWeeklyWeather = [
+    { day: '09', date: 'Mon', temp: '28°', icon: 'weather-cloudy' },
+    { day: '10', date: 'Tue', temp: '30°', icon: 'weather-partly-cloudy' },
+    { day: '11', date: 'Wed', temp: '32°', icon: 'weather-sunny', active: true },
+    { day: '12', date: 'Thu', temp: '34°', icon: 'weather-partly-cloudy' },
+    { day: '13', date: 'Fri', temp: '35°', icon: 'weather-sunny' },
+    { day: '14', date: 'Sat', temp: '34°', icon: 'weather-sunny' },
+  ];
+
   const welcomeMsg = getWelcomeMessage();
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        {/* Welcome Header */}
-        <View style={styles.welcomeHeader}>
-          <Text style={styles.welcomeTextHindi}>{t('welcome')}, {getUserName()}!</Text>
-          <Text style={styles.welcomeTextEnglish}>{t('todayFarming')}</Text>
-          <Text style={styles.dateText}>
-            {new Date().toLocaleDateString('en-IN', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <Stack.Screen options={{ headerShown: false }} />
 
-        {/* Today's Weather */}
-        <View style={styles.weatherCard}>
-          <Text style={styles.sectionTitle}>{t('todayWeather')}</Text>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           
-          {weatherLoading ? (
-            <View style={styles.weatherLoading}>
-              <ActivityIndicator size="small" color="#16a34a" />
-              <Text style={styles.loadingText}>{t('loadingWeather')}</Text>
-            </View>
-          ) : currentWeather ? (
-            <View style={styles.weatherContent}>
-              <View style={styles.weatherMain}>
-                <MaterialCommunityIcons
-                  name={getWeatherIcon(currentWeather.current.condition.text)}
-                  size={60}
-                  color="#16a34a"
-                />
-                <View style={styles.weatherInfo}>
-                  <Text style={styles.temperature}>
-                    {Math.round(currentWeather.current.temp_c)}°C
+          {/* Hero Section */}
+          <ImageBackground 
+            source={{ uri: HERO_BG }} 
+            style={styles.heroSection}
+            imageStyle={styles.heroImage}
+          >
+            <View style={styles.heroOverlay}>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <Text style={styles.greetingText}>Hello {getUserName()}</Text>
+                  <Text style={styles.timeText}>
+                    {new Date().toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false,
+                    })}
                   </Text>
-                  <Text style={styles.weatherCondition}>
-                    {currentWeather.current.condition.text}
-                  </Text>
-                  <Text style={styles.locationText}>
-                    📍 {currentWeather.location.name}
+                  <Text style={styles.dateHeaderText}>
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
                   </Text>
                 </View>
               </View>
-              
-              <View style={styles.weatherStats}>
-                <View style={styles.weatherStat}>
-                  <MaterialCommunityIcons name="water-percent" size={16} color="#6b7280" />
-                  <Text style={styles.statText}>{currentWeather.current.humidity}%</Text>
-                  <Text style={styles.statLabel}>{t('humidity')}</Text>
-                </View>
-                <View style={styles.weatherStat}>
-                  <MaterialCommunityIcons name="weather-windy" size={16} color="#6b7280" />
-                  <Text style={styles.statText}>{Math.round(currentWeather.current.wind_kph)}</Text>
-                  <Text style={styles.statLabel}>{t('wind')}</Text>
-                </View>
-                <View style={styles.weatherStat}>
-                  <MaterialCommunityIcons name="water" size={16} color="#6b7280" />
-                  <Text style={styles.statText}>{currentWeather.current.precip_mm}mm</Text>
-                  <Text style={styles.statLabel}>{t('rain')}</Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <Text style={styles.errorText}>{t('weatherNotAvailable')}</Text>
-          )}
-        </View>
 
-        {/* Farmer Images Slider */}
-        <View style={styles.sliderCard}>
-          <Text style={styles.sectionTitle}>{t('farmingActivities')}</Text>
-          
-          <View style={styles.imageSlider}>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(event) => {
-                const index = Math.round(event.nativeEvent.contentOffset.x / width);
-                setCurrentImageIndex(index);
-              }}
+              {/* Main Title */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.mainTitle}>Farming Made Simple,</Text>
+                <Text style={styles.mainTitle}>Smarter, and Sustainable</Text>
+              </View>
+
+            
+            </View>
+          </ImageBackground>
+
+          {/* Weather Section */}
+          <View style={styles.weatherSection}>
+            <ImageBackground 
+              source={{ uri: 'https://images.unsplash.com/photo-1546721435-666d5f9a5676?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDF8fGNyb3BzfGVufDB8fDB8fHwy' }}
+              style={styles.weatherBgImage}
+              imageStyle={styles.weatherBgImageStyle}
             >
-              {farmerImages.map((imageUrl, index) => (
-                <View key={index} style={styles.imageContainer}>
-                  <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.farmerImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.imageOverlay}>
-                    <Text style={styles.imageText}>
-                      {index === 0 && t('fieldPreparation')}
-                      {index === 1 && t('sowingSeason')}
-                      {index === 2 && t('cropCare')}
-                      {index === 3 && t('harvestTime')}
-                    </Text>
+              <View style={styles.weatherContainer}>
+                {/* Current Weather Card */}
+                <View style={styles.currentWeatherCard}>
+                  <View style={styles.currentWeatherMain}>
+                    <View style={styles.currentWeatherLeft}>
+                      <Text style={styles.currentDate}>
+                        {new Date().toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                      {weatherLoading ? (
+                        <ActivityIndicator size="large" color="#ff6b35" />
+                      ) : currentWeather ? (
+                        <Text style={styles.currentTemp}>{Math.round(currentWeather.current.temp_c)}°C</Text>
+                      ) : (
+                        <Text style={styles.currentTemp}>33°C</Text>
+                      )}
+                      <View style={styles.weatherDescriptionRow}>
+                        <MaterialCommunityIcons 
+                          name={currentWeather ? getWeatherIcon(currentWeather.current.condition.text) : "weather-sunny"} 
+                          size={16} 
+                          color="#ff6b35" 
+                        />
+                        <Text style={styles.weatherDescription}>
+                          {currentWeather ? currentWeather.current.condition.text : "Bright and Sunny"}
+                        </Text>
+                      </View>
+                      <View style={styles.weatherAdviceRow}>
+                        <MaterialCommunityIcons name="leaf" size={16} color="#16a34a" />
+                        <Text style={styles.weatherAdvice}>Suitable for plant growth</Text>
+                      </View>
+                    </View>
+                    <View style={styles.currentWeatherRight}>
+                      <Text style={styles.weatherLabel}>Weather</Text>
+                    </View>
                   </View>
                 </View>
-              ))}
+              </View>
+            </ImageBackground>
+          </View>
+
+          {/* Crop Categories */}
+          <View style={styles.cropCategoriesSection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <TouchableOpacity style={[styles.cropCategory, styles.activeCropCategory]}>
+                <Text style={[styles.cropCategoryText, styles.activeCropCategoryText]}>🌾 Wheat</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cropCategory}>
+                <Text style={styles.cropCategoryText}>🌾 Grains</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cropCategory}>
+                <Text style={styles.cropCategoryText}>🥔 Potato</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cropCategory}>
+                <Text style={styles.cropCategoryText}>🌽 Corn</Text>
+              </TouchableOpacity>
             </ScrollView>
-            
-            {/* Slider Indicators */}
-            <View style={styles.sliderIndicators}>
-              {farmerImages.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.indicator,
-                    currentImageIndex === index && styles.activeIndicator,
-                  ]}
-                />
-              ))}
+          </View>
+
+          {/* My Fields Section */}
+          <View style={styles.myFieldsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>My Fields</Text>
+              <TouchableOpacity>
+                <Text style={styles.seeAllText}>See all →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.fieldCard}>
+              <ImageBackground 
+                source={{ uri: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&h=200&fit=crop' }}
+                style={styles.fieldImageBg}
+                imageStyle={styles.fieldImage}
+              >
+                <View style={styles.fieldOverlay}>
+                  <View style={styles.fieldHeader}>
+                    <View style={styles.fieldRating}>
+                      <Text style={styles.fieldRatingText}>⭐ 4.5</Text>
+                    </View>
+                    <TouchableOpacity style={styles.fieldFavorite}>
+                      <MaterialCommunityIcons name="heart" size={20} color="#ff4444" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.fieldFooter}>
+                    <View style={styles.fieldLocation}>
+                      <MaterialCommunityIcons name="map-marker" size={16} color="#fff" />
+                      <Text style={styles.fieldLocationText}>140-7380 (North) | PLDGI6 (West)</Text>
+                    </View>
+                    <Text style={styles.fieldName}>Emerald Valley Plot F5</Text>
+                    <TouchableOpacity style={styles.fieldActionButton}>
+                      <MaterialCommunityIcons name="arrow-top-right" size={20} color="#000" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ImageBackground>
             </View>
           </View>
-        </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsCard}>
-          <Text style={styles.sectionTitle}>{t('quickServices')}</Text>
-          
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction}>
-              <MaterialCommunityIcons name="leaf" size={32} color="#16a34a" />
-              <Text style={styles.quickActionText}>{t('cropDisease')}</Text>
-            </TouchableOpacity>
+          {/* Quick Actions - keeping your original functionality */}
+          <View style={styles.quickActionsCard}>
+            <Text style={styles.sectionTitleOriginal}>{t('quickServices')}</Text>
             
-            <TouchableOpacity style={styles.quickAction}>
-              <MaterialCommunityIcons name="weather-cloudy" size={32} color="#3b82f6" />
-              <Text style={styles.quickActionText}>{t('weather')}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.quickAction}>
-              <MaterialCommunityIcons name="wallet" size={32} color="#f59e0b" />
-              <Text style={styles.quickActionText}>{t('wallet')}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.quickAction}>
-              <MaterialCommunityIcons name="storefront" size={32} color="#8b5cf6" />
-              <Text style={styles.quickActionText}>{t('market')}</Text>
-            </TouchableOpacity>
+            <View style={styles.quickActions}>
+              <TouchableOpacity style={styles.quickAction}>
+                <MaterialCommunityIcons name="leaf" size={32} color="#16a34a" />
+                <Text style={styles.quickActionText}>{t('cropDisease')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickAction}>
+                <MaterialCommunityIcons name="weather-cloudy" size={32} color="#3b82f6" />
+                <Text style={styles.quickActionText}>{t('weather')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickAction}>
+                <MaterialCommunityIcons name="wallet" size={32} color="#f59e0b" />
+                <Text style={styles.quickActionText}>{t('wallet')}</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.quickAction}>
+                <MaterialCommunityIcons name="storefront" size={32} color="#8b5cf6" />
+                <Text style={styles.quickActionText}>{t('market')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Tips Section */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.sectionTitle}>{t('todayTips')}</Text>
-          
-          <View style={styles.tipItem}>
-            <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
-            <Text style={styles.tipText}>
-              {t('irrigationTip')}
-            </Text>
+          {/* Tips Section - keeping your original functionality */}
+          <View style={styles.tipsCard}>
+            <Text style={styles.sectionTitleOriginal}>{t('todayTips')}</Text>
+            
+            <View style={styles.tipItem}>
+              <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
+              <Text style={styles.tipText}>
+                {t('irrigationTip')}
+              </Text>
+            </View>
+            
+            <View style={styles.tipItem}>
+              <MaterialCommunityIcons name="chart-line" size={20} color="#16a34a" />
+              <Text style={styles.tipText}>
+                {t('wheatPriceTip')}
+              </Text>
+            </View>
           </View>
-          
-          <View style={styles.tipItem}>
-            <MaterialCommunityIcons name="chart-line" size={20} color="#16a34a" />
-            <Text style={styles.tipText}>
-              {t('wheatPriceTip')}
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
 
-      {/* Welcome Message */}
-      <WelcomeMessage
-        visible={showWelcome}
-        onClose={() => setShowWelcome(false)}
-      />
-    </View>
+        </ScrollView>
+
+        {/* Welcome Message - keeping your original functionality */}
+        <WelcomeMessage
+          visible={showWelcome}
+          onClose={() => setShowWelcome(false)}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
   },
   scrollView: {
     flex: 1,
   },
-  welcomeHeader: {
-    backgroundColor: 'rgba(22, 163, 74, 0.95)',
+  
+  // Hero Section Styles
+  heroSection: {
+    height: 350,
+    position: 'relative',
+    
+  },
+  heroImage: {
+    resizeMode: 'cover',
+    borderRadius: 40,
+  },
+  heroOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     padding: 20,
-    paddingTop: 60,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#16a34a',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    paddingTop: 50,
+    borderRadius: 40,
   },
-  welcomeTextHindi: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-    fontFamily: 'System',
-    letterSpacing: 0.5,
-  },
-  welcomeTextEnglish: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    fontFamily: 'System',
-    letterSpacing: 0.3,
-  },
-  dateText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    fontFamily: 'System',
-    letterSpacing: 0.2,
-  },
-  weatherCard: {
-    margin: 16,
-    padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
-    backdropFilter: 'blur(20px)',
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-    textAlign: 'center',
-    fontFamily: 'System',
-    letterSpacing: 0.4,
-  },
-  weatherLoading: {
+  
+  // Header Styles
+  header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 40,
+    marginTop: 12,
   },
-  loadingText: {
-    marginLeft: 8,
-    color: '#6b7280',
-  },
-  weatherContent: {
-    // Weather content styles
-  },
-  weatherMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  weatherInfo: {
-    marginLeft: 16,
+  headerLeft: {
     flex: 1,
   },
-  temperature: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#16a34a',
-    textAlign: 'center',
-    marginVertical: 8,
-    fontFamily: 'System',
-    letterSpacing: 0.5,
+  timeText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+    marginTop: 10,
   },
-  weatherCondition: {
-    fontSize: 17,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: 'System',
-    letterSpacing: 0.2,
+  greetingText: {
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
   },
-  locationText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  dateHeaderText: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  weatherStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  weatherStat: {
+  profileContainer: {
     alignItems: 'center',
   },
-  statText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginTop: 4,
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
+  
+  // Title Styles
+  titleContainer: {
+    marginBottom: 30,
   },
-  errorText: {
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 32,
     textAlign: 'center',
-    color: '#6b7280',
-    padding: 20,
   },
-  sliderCard: {
-    margin: 16,
-    marginTop: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
+  
+  // Search Bar Styles
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor:'#1a1a1a',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 'auto',
+  },
+  searchPlaceholder: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  
+  // Weather Section Styles
+  weatherSection: {
+    marginTop: -100,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  weatherBgImage: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  weatherBgImageStyle: {
+    borderRadius: 20,
+    opacity: 0.9,
+  },
+  weatherContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 20,
+    padding: 12,
+    backdropFilter: 'blur(20px)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
+    marginHorizontal: 10,
+  },
+  weeklyWeatherScroll: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  weatherDayCard: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginRight: 6,
+    borderRadius: 16,
+    minWidth: 50,
+    backgroundColor: '#1a1a1a',
+  },
+  activeWeatherCard: {
+    backgroundColor: '#1a1a1a',
+  },
+  weatherDayNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  weatherDayName: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 6,
+  },
+  weatherDayIcon: {
+    marginBottom: 6,
+  },
+  weatherDayTemp: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
+  activeWeatherText: {
+    color: '#fff',
+  },
+  
+  // Current Weather Card
+  currentWeatherCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  currentWeatherMain: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  currentWeatherLeft: {
+    flex: 1,
+  },
+  currentDate: {
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  currentTemp: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+  },
+  weatherDescriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  weatherDescription: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  weatherAdviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  weatherAdvice: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+  },
+  currentWeatherRight: {
+    alignItems: 'flex-end',
+  },
+  weatherLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  
+  // Crop Categories
+  cropCategoriesSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#1a1a1a',
+  },
+  cropCategory: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 10,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+  },
+  activeCropCategory: {
+    backgroundColor: '#ff6b35',
+  },
+  cropCategoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeCropCategoryText: {
+    color: '#fff',
+  },
+  
+  // My Fields Section
+  myFieldsSection: {
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: '#ff6b35',
+    fontWeight: '600',
+  },
+  fieldCard: {
+    borderRadius: 20,
     overflow: 'hidden',
-    backdropFilter: 'blur(20px)',
-  },
-  imageSlider: {
     height: 200,
   },
-  imageContainer: {
-    width: width - 32,
-    height: 200,
+  fieldImageBg: {
+    flex: 1,
+  },
+  fieldImage: {
+    resizeMode: 'cover',
+  },
+  fieldOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 20,
+    justifyContent: 'space-between',
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fieldRating: {
+    backgroundColor: '#1a1a1a',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  fieldRatingText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  fieldFavorite: {
+    backgroundColor: '#1a1a1a',
+    padding: 8,
+    borderRadius: 15,
+  },
+  fieldFooter: {
     position: 'relative',
   },
-  farmerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 16,
-  },
-  imageText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  sliderIndicators: {
+  fieldLocation: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: 'white',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#d1d5db',
-    marginHorizontal: 4,
+  fieldLocationText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
   },
-  activeIndicator: {
-    backgroundColor: '#16a34a',
+  fieldName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
   },
+  fieldActionButton: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 15,
+  },
+
+  // Glass Effect Containers
   quickActionsCard: {
     margin: 16,
-    marginTop: 0,
     padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(20px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  
+  sectionTitleOriginal: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   quickActions: {
     flexDirection: 'row',
@@ -540,29 +732,25 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1f2937',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 8,
-  },
-  quickActionSubtext: {
-    fontSize: 10,
-    color: '#6b7280',
-    marginTop: 2,
+    textAlign: 'center',
   },
   tipsCard: {
     margin: 16,
-    marginTop: 0,
-    marginBottom: 120, // Extra space for floating AI button
+    marginBottom: 120,
     padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backdropFilter: 'blur(20px)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 12,
-    backdropFilter: 'blur(20px)',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    overflow: 'hidden',
   },
   tipItem: {
     flexDirection: 'row',
@@ -573,7 +761,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 14,
-    color: '#374151',
+    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 20,
   },
 });

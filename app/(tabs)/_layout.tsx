@@ -2,12 +2,14 @@
 import { Tabs, Redirect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { LanguageProvider, useLanguage } from '../../context/LanguageContext';
-import { View, ActivityIndicator, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo, useEffect, useRef } from 'react';
 import FloatingAIAssistant from '../../components/shared/FloatingAIAssistant';
 import LanguageSelector from '../../components/shared/LanguageSelector';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 function TabsContent() {
   const { user, profile, isLoading, logout } = useAuth();
@@ -71,29 +73,33 @@ function TabsContent() {
     return userRole === 'farmer' || profileRole === 'farmer';
   }, [user?.role, profile?.role]);
 
-  // Common tab bar styling
+  // Common tab bar styling - UPDATED FOR CIRCULAR DESIGN
+  const tabBarWidth = screenWidth * 0.4; // 60% of screen width (40% reduction)
+  const tabBarMargin = (screenWidth - tabBarWidth) / 2; // Center calculation
+  
   const tabBarStyle = {
     position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    height: 85,
-    paddingBottom: 25,
-    paddingTop: 10,
-    paddingHorizontal: 20,
+    bottom: 20,
+    left: tabBarMargin, // Calculated center position
+    right: tabBarMargin, // Also set right margin for proper centering
+    backgroundColor: '#000000', // Solid black background
+    borderRadius: 30,
+    height: 65,
+    paddingBottom: 0,
+    paddingTop: 0,
+    paddingHorizontal: 8, // Reduced horizontal padding for tighter spacing
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 25,
+    borderTopWidth: 0, // Remove any top border
+    borderWidth: 0, // Remove all borders
   };
 
   const screenOptions = {
-    tabBarActiveTintColor: '#16a34a',
-    tabBarInactiveTintColor: 'rgba(107, 114, 128, 0.8)',
+    tabBarActiveTintColor: '#ffffff',
+    tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.6)',
     headerStyle: {
       backgroundColor: '#16a34a',
     },
@@ -102,21 +108,38 @@ function TabsContent() {
       fontWeight: 'bold' as const,
     },
     tabBarStyle,
-    tabBarLabelStyle: {
-      fontSize: 11,
-      fontWeight: '600' as const,
-      marginTop: 4,
-    },
+    tabBarShowLabel: false,
     tabBarIconStyle: {
-      marginTop: 4,
+      marginTop: 0,
     },
-    tabBarBackground: () => (
-      <BlurView
-        intensity={80}
-        tint="light"
-        style={StyleSheet.absoluteFill}
-      />
-    ),
+    tabBarBackground: () => null, // Remove any background component
+    tabBarButton: (props: any) => {
+      // Check if this is the center AI tab by checking the route name
+      const isAITab = props.to && props.to.includes('crop_disease');
+      
+      return (
+        <TouchableOpacity
+          {...props}
+          style={[
+            {
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 65,
+              marginHorizontal: 2, // Reduced margin between icons
+            }
+          ]}
+        >
+          <View style={[
+            styles.tabIconContainer,
+            isAITab && styles.centerTabIconContainer,
+            props.accessibilityState?.selected && !isAITab && styles.activeTabIconContainer
+          ]}>
+            {props.children}
+          </View>
+        </TouchableOpacity>
+      );
+    },
     headerRight: () => (
       <View style={styles.headerRightContainer}>
         <LanguageSelector />
@@ -143,7 +166,7 @@ function TabsContent() {
                 title: t('home'),
                 headerTitle: `🏠 ${t('home')}`,
                 tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="home" size={size} color={color} />
+                  <Ionicons name="home" size={24} color={color} />
                 ),
               }}
             />
@@ -154,18 +177,20 @@ function TabsContent() {
                 title: t('farmingActivities'),
                 headerTitle: `🌾 ${t('farmingActivities')}`,
                 tabBarIcon: ({ color, size }) => (
-                  <MaterialCommunityIcons name="leaf" size={size} color={color} />
+                  <MaterialCommunityIcons name="leaf" size={24} color={color} />
                 ),
               }}
             />
 
-            {/* AI Assistant - Center placeholder (invisible) */}
+            {/* AI Assistant - Center with visible icon */}
             <Tabs.Screen
               name="crop_disease"
               options={{
                 title: '',
                 headerTitle: `🔬 ${t('cropDisease')}`,
-                tabBarIcon: () => <View style={{ width: 50 }} />, // Invisible placeholder
+                tabBarIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="robot" size={28} color="#ffffff" />
+                ),
                 tabBarLabel: () => null,
               }}
             />
@@ -176,7 +201,7 @@ function TabsContent() {
                 title: t('weather'),
                 headerTitle: `🌤️ ${t('weather')}`,
                 tabBarIcon: ({ color, size }) => (
-                  <MaterialCommunityIcons name="weather-cloudy" size={size} color={color} />
+                  <MaterialCommunityIcons name="weather-cloudy" size={24} color={color} />
                 ),
               }}
             />
@@ -187,7 +212,7 @@ function TabsContent() {
                 title: t('profile'),
                 headerTitle: `👤 ${t('profile')}`,
                 tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="person" size={size} color={color} />
+                  <Ionicons name="person" size={24} color={color} />
                 ),
               }}
             />
@@ -223,7 +248,7 @@ function TabsContent() {
               title: t('home'),
               headerTitle: `🏠 ${t('home')}`,
               tabBarIcon: ({ color, size }) => (
-                <Ionicons name="home" size={size} color={color} />
+                <Ionicons name="home" size={24} color={color} />
               ),
             }}
           />
@@ -234,18 +259,20 @@ function TabsContent() {
               title: t('market'),
               headerTitle: `🛒 ${t('market')}`,
               tabBarIcon: ({ color, size }) => (
-                <Ionicons name="storefront" size={size} color={color} />
+                <Ionicons name="storefront" size={24} color={color} />
               ),
             }}
           />
 
-          {/* AI Assistant - Center placeholder (invisible) */}
+          {/* AI Assistant - Center with visible icon */}
           <Tabs.Screen
             name="crop_disease"
             options={{
               title: '',
               headerTitle: `🔬 ${t('cropDisease')}`,
-              tabBarIcon: () => <View style={{ width: 50 }} />, // Invisible placeholder
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons name="robot" size={28} color="#ffffff" />
+              ),
               tabBarLabel: () => null,
             }}
           />
@@ -256,7 +283,7 @@ function TabsContent() {
               title: t('weather'),
               headerTitle: `🌤️ ${t('weather')}`,
               tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="weather-cloudy" size={size} color={color} />
+                <MaterialCommunityIcons name="weather-cloudy" size={24} color={color} />
               ),
             }}
           />
@@ -267,7 +294,7 @@ function TabsContent() {
               title: t('profile'),
               headerTitle: `👤 ${t('profile')}`,
               tabBarIcon: ({ color, size }) => (
-                <Ionicons name="person" size={size} color={color} />
+                <Ionicons name="person" size={24} color={color} />
               ),
             }}
           />
@@ -312,5 +339,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
+  },
+  // CIRCULAR TAB STYLES - MATCHING YOUR IMAGE
+  tabIconContainer: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerTabIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#4ade80',
+  },
+  activeTabIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
 });
